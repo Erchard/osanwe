@@ -1,30 +1,46 @@
-package main
+package db
 
 import (
 	"fmt"
-	"github.com/DanielMorsing/rocksdb"
+	"github.com/boltdb/bolt"
+	"time"
 )
 
-func main() {
+var MyBucket = []byte("MyBucket")
 
-	opts := rocksdb.NewOptions()
-	opts.SetCache(rocksdb.NewLRUCache(3 << 30))
-	opts.SetCreateIfMissing(true)
-	db, err := rocksdb.Open("/path/to/db", opts)
+var db *bolt.DB
+
+func Init() error {
+	var err error
+	db, err = bolt.Open("my.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
-	ro := rocksdb.NewReadOptions()
-	wo := rocksdb.NewWriteOptions()
+	return db.Update(func(tx *bolt.Tx) error {
+		_, err = tx.CreateBucketIfNotExists(MyBucket)
+		return err
+	})
+}
 
-	err = db.Put(wo, []byte("mykey"), []byte("my data"))
+func Set(key []byte, val []byte) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(MyBucket)
+		return b.Put(key, val)
+	})
+}
 
-	data, err := db.Get(ro, []byte("mykey"))
+func Get(key []byte) []byte {
+	var val []byte
 
-	err = db.Put(wo, []byte("enotherkey"), data)
-	fmt.Printf("\n%s\n", data)
-
-	err = db.Delete(wo, []byte("key"))
-
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(MyBucket)
+		val = b.Get(key)
+		return nil
+	})
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
+	return val
 }
