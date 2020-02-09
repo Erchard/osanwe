@@ -9,7 +9,10 @@ import (
 
 func Start() error {
 
-	listener, err := net.Listen("tcp", "127.0.0.1:8080")
+	laddr := net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0} // Port == 0 - free port
+	addrString := laddr.String()
+	fmt.Println(addrString)
+	listener, err := net.Listen("tcp", addrString)
 	if err != nil {
 		log.Fatal("tcp server listener error:", err)
 		return err
