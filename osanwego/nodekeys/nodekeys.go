@@ -55,6 +55,6 @@ func createKeys() {
 	fmt.Println("Save key to DB")
 }
 
-func GetPubKey() []byte {
-
+func GetPubKey() ([]byte, []byte) {
+	return nodekey.X.Bytes(), nodekey.Y.Bytes()
 }
