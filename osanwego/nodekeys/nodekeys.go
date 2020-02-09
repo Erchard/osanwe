@@ -54,26 +54,3 @@ func createKeys() {
 	}
 	fmt.Println("Save key to DB")
 }
-
-/*
-func main() {
-
-
-
-	fmt.Printf("\n %x \n", dkey)
-
-	x, y := elliptic.P256().ScalarBaseMult(dkey.Bytes())
-
-	newkey := &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: elliptic.P256(),
-			X:     x,
-			Y:     y,
-		},
-		D: dkey,
-	}
-
-	fmt.Printf("\n %x \n", newkey)
-
-}
-*/

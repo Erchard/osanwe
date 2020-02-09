@@ -1,4 +1,4 @@
-package main
+package listener
 
 import (
 	"bufio"
@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-func main() {
+func Start() {
 	listener, err := net.Listen("tcp", "127.0.0.1:8080")
 	if err != nil {
 		log.Fatal("tcp server listener error:", err)
