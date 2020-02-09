@@ -2,10 +2,14 @@ package listener
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
+	"github.com/Erchard/osanwe/osanwego/db"
 	"log"
 	"net"
 )
+
+var portindb = []byte("portindb")
 
 func Start() error {
 
@@ -21,8 +25,8 @@ func Start() error {
 	}
 
 	if listener.Addr().(*net.TCPAddr).Port != port {
-		fmt.Printf("port: %n \n", port)
-		fmt.Printf("listener.Addr().(*net.TCPAddr).Port: %n \n", listener.Addr().(*net.TCPAddr).Port)
+		fmt.Printf("port: %v \n", port)
+		fmt.Printf("listener.Addr().(*net.TCPAddr).Port: %v \n", listener.Addr().(*net.TCPAddr).Port)
 		saveNewPort(listener.Addr().(*net.TCPAddr).Port)
 	}
 
@@ -34,11 +38,18 @@ func Start() error {
 }
 
 func saveNewPort(port int) {
-	fmt.Printf("Save new port: %n \n", port)
+	fmt.Printf("Save new port: %v \n", port)
+	bs := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bs, uint32(port))
+	db.Set(portindb, bs)
 }
 
 func restorePort() int {
-
+	bs := db.Get(portindb)
+	if bs != nil {
+		port := binary.LittleEndian.Uint32(bs)
+		return int(port)
+	}
 	return 0
 }
 
