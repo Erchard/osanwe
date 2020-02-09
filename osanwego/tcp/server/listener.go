@@ -9,7 +9,9 @@ import (
 
 func Start() error {
 
-	laddr := net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0} // Port == 0 - free port
+	var port int = restorePort()
+
+	laddr := net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port} // Port == 0 - free port
 	addrString := laddr.String()
 	fmt.Println(addrString)
 	listener, err := net.Listen("tcp", addrString)
@@ -18,11 +20,26 @@ func Start() error {
 		return err
 	}
 
+	if listener.Addr().(*net.TCPAddr).Port != port {
+		fmt.Printf("port: %n \n", port)
+		fmt.Printf("listener.Addr().(*net.TCPAddr).Port: %n \n", listener.Addr().(*net.TCPAddr).Port)
+		saveNewPort(listener.Addr().(*net.TCPAddr).Port)
+	}
+
 	fmt.Println("Listener start: " + listener.Addr().String())
 
 	go acceptConnection(listener)
 
 	return nil
+}
+
+func saveNewPort(port int) {
+	fmt.Printf("Save new port: %n \n", port)
+}
+
+func restorePort() int {
+
+	return 0
 }
 
 func acceptConnection(listener net.Listener) {
