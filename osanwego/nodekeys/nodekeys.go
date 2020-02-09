@@ -47,6 +47,12 @@ func createKeys() {
 
 	nodekey = privkey
 	dkeyBytes = privkey.D.Bytes()
+
+	err = db.Set(keysindb, dkeyBytes)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Println("Save key to DB")
 }
 
 /*
