@@ -17,7 +17,8 @@ func Start() error {
 		log.Fatal("tcp server listener error:", err)
 		return err
 	}
-	fmt.Println("Listener start")
+
+	fmt.Println("Listener start: " + listener.Addr().String())
 
 	go acceptConnection(listener)
 
