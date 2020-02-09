@@ -6,6 +6,7 @@ import (
 	"github.com/Erchard/osanwe/osanwego/nodekeys"
 	"github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
+	"time"
 )
 
 func main() {
@@ -14,6 +15,7 @@ func main() {
 	must(nodekeys.Restore())
 	must(listener.Start())
 
+	time.Sleep(5 * time.Second)
 	fmt.Println("All done!")
 }
 
