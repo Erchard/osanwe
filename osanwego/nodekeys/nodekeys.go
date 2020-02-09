@@ -33,7 +33,7 @@ func Restore() error {
 			D: dkey,
 		}
 	}
-	fmt.Printf("privkey.D: %x", dkeyBytes)
+	fmt.Printf("privkey.D: %x \n", dkeyBytes)
 
 	return nil
 }
