@@ -15,7 +15,7 @@ var dkey []byte
 func Restore() error {
 	fmt.Println("Restore node keys")
 	dkey = db.Get(keysindb)
-	fmt.Printf("%x", dkey)
+	fmt.Printf("privkey.D: %x", dkey)
 	return nil
 }
 
