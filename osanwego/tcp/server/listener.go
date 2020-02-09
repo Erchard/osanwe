@@ -15,7 +15,7 @@ func Start() error {
 
 	var port int = restorePort()
 
-	laddr := net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port} // Port == 0 - free port
+	laddr := net.TCPAddr{IP: net.IPv4(192, 168, 0, 105), Port: port} // Port == 0 - free port
 	addrString := laddr.String()
 	fmt.Println(addrString)
 	listener, err := net.Listen("tcp", addrString)
