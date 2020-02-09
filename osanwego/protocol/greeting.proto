@@ -2,9 +2,15 @@ syntax = "proto3";
 
 package protocol;
 
+message PubKey {
+    bytes X = 1;
+    bytes Y = 2;
+
+}
+
 
 message Greeting {
     int32 version = 1;
     int32 port = 2;
-    bytes pubkey = 3;
+    PubKey pubkey = 3;
 }

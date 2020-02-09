@@ -3,7 +3,6 @@ package network
 import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/protocol"
-	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"github.com/golang/protobuf/proto"
 	"log"
 )
@@ -11,8 +10,8 @@ import (
 func Connect() error {
 	fmt.Println("Connecting to network")
 	greeting := &protocol.Greeting{
-		Version: 1,
-		Port:    listener.GetPort(),
+		Version: 0,
+		Port:    0,
 		Pubkey:  nil,
 	}
 

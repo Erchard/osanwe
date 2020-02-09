@@ -54,3 +54,7 @@ func createKeys() {
 	}
 	fmt.Println("Save key to DB")
 }
+
+func GetPubKey() []byte {
+
+}
