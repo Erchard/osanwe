@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	"github.com/Erchard/osanwe/osanwego/network"
 	"github.com/Erchard/osanwe/osanwego/nodekeys"
 	"github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
