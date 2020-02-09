@@ -6,25 +6,53 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	"math/big"
 )
 
 var keysindb = []byte("keysindb")
 
-var dkey []byte
+var dkeyBytes []byte
+var nodekey *ecdsa.PrivateKey
 
 func Restore() error {
 	fmt.Println("Restore node keys")
-	dkey = db.Get(keysindb)
-	fmt.Printf("privkey.D: %x", dkey)
+	dkeyBytes = db.Get(keysindb)
+	if dkeyBytes == nil {
+		fmt.Println("Node keys not found. Creating...")
+		createKeys()
+	} else {
+		x, y := elliptic.P256().ScalarBaseMult(dkeyBytes)
+		dkey := new(big.Int)
+		dkey.SetBytes(dkeyBytes)
+		nodekey = &ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				Curve: elliptic.P256(),
+				X:     x,
+				Y:     y,
+			},
+			D: dkey,
+		}
+	}
+	fmt.Printf("privkey.D: %x", dkeyBytes)
+
 	return nil
 }
 
-func main() {
-
-	privkey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+func createKeys() {
+	privkey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 	fmt.Printf("\n %x \n", privkey)
 
-	dkey := privkey.D
+	nodekey = privkey
+	dkeyBytes = privkey.D.Bytes()
+}
+
+/*
+func main() {
+
+
 
 	fmt.Printf("\n %x \n", dkey)
 
@@ -42,3 +70,4 @@ func main() {
 	fmt.Printf("\n %x \n", newkey)
 
 }
+*/
