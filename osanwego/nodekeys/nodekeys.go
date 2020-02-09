@@ -10,9 +10,12 @@ import (
 
 var keysindb = []byte("keysindb")
 
+var dkey []byte
+
 func Restore() error {
 	fmt.Println("Restore node keys")
-	db.Get(keysindb)
+	dkey = db.Get(keysindb)
+	fmt.Printf("%x", dkey)
 	return nil
 }
 
