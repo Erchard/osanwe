@@ -11,12 +11,13 @@ var MyBucket = []byte("MyBucket")
 var db *bolt.DB
 
 func Init() error {
+
 	var err error
-	db, err = bolt.Open("my.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err = bolt.Open("osanwe.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Open DB")
 	return db.Update(func(tx *bolt.Tx) error {
 		_, err = tx.CreateBucketIfNotExists(MyBucket)
 		return err
