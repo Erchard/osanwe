@@ -14,6 +14,7 @@ func main() {
 	must(db.Init())
 	must(nodekeys.Restore())
 	must(listener.Start())
+	must(network.Connect())
 
 	time.Sleep(5 * time.Second)
 	fmt.Println("All done!")
