@@ -1,11 +1,20 @@
-package restorekeys
+package nodekeys
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"github.com/Erchard/osanwe/osanwego/db"
 )
+
+var keysindb = []byte("keysindb")
+
+func Restore() error {
+	fmt.Println("Restore node keys")
+	db.Get(keysindb)
+	return nil
+}
 
 func main() {
 
