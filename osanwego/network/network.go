@@ -14,10 +14,10 @@ func Connect() error {
 	greeting := &protocol.Greeting{
 		Version: 0,
 		Port:    0,
-		Pubkey:  &protocol.PubKey{
+		Pubkey: &protocol.PubKey{
 			X: x,
 			Y: y,
-		}
+		},
 	}
 
 	data, err := proto.Marshal(greeting)
