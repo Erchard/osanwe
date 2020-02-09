@@ -53,6 +53,10 @@ func restorePort() int {
 	return 0
 }
 
+func GetPort() int32 {
+	return int32(restorePort())
+}
+
 func acceptConnection(listener net.Listener) {
 	for {
 		fmt.Println("Ready to connect...")
