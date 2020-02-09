@@ -32,7 +32,7 @@ func Start() error {
 
 	fmt.Println("Listener start: " + listener.Addr().String())
 
-	go acceptConnection(listener)
+	acceptConnection(listener)
 
 	return nil
 }
