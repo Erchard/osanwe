@@ -15,17 +15,22 @@ func Start() error {
 		return err
 	}
 	fmt.Println("Listener start")
+
+	go acceptConnection(listener)
+
+	return nil
+}
+
+func acceptConnection(listener net.Listener) {
 	for {
+		fmt.Println("Ready to connect...")
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Fatal("tcp server accept error", err)
-			return err
 		}
 
 		go handleConnection(conn)
 	}
-
-	return nil
 }
 
 func handleConnection(conn net.Conn) {
