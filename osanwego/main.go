@@ -1,8 +1,8 @@
-package osanwego
+package main
 
 import (
 	"fmt"
-	"github.com/Erchard/osanwe/db"
+	"github.com/Erchard/osanwe/osanwego/db"
 )
 
 func main() {
