@@ -9,13 +9,15 @@ import (
 	"net"
 )
 
+var ipindb = []byte("ipindb")
 var portindb = []byte("portindb")
 
 func Start() error {
 
+	var ipaddress net.IP = restoreAddress()
 	var port int = restorePort()
 
-	laddr := net.TCPAddr{IP: net.IPv4(192, 168, 0, 105), Port: port} // Port == 0 - free port
+	laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
 	addrString := laddr.String()
 	fmt.Println(addrString)
 	listener, err := net.Listen("tcp", addrString)
@@ -35,6 +37,20 @@ func Start() error {
 	acceptConnection(listener)
 
 	return nil
+}
+
+func restoreAddress() net.IP {
+
+	ipindb := db.Get(ipindb)
+	if ipindb == nil {
+		ipindb = []byte{127, 0, 0, 1}
+	}
+	a := ipindb[0]
+	b := ipindb[1]
+	c := ipindb[2]
+	d := ipindb[3]
+	return net.IPv4(a, b, c, d)
+
 }
 
 func saveNewPort(port int) {
