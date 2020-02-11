@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-var MyBucket = []byte("MyBucket")
+var MySettings = []byte("MySettings")
+var AddressBook = []byte("AddressBook")
 
 var db *bolt.DB
 
@@ -19,23 +20,24 @@ func Init() error {
 	}
 	fmt.Println("Open DB")
 	return db.Update(func(tx *bolt.Tx) error {
-		_, err = tx.CreateBucketIfNotExists(MyBucket)
+		_, err = tx.CreateBucketIfNotExists(MySettings)
+		_, err = tx.CreateBucketIfNotExists(AddressBook)
 		return err
 	})
 }
 
-func Set(key []byte, val []byte) error {
+func set(bucket []byte, key []byte, val []byte) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(MyBucket)
+		b := tx.Bucket(bucket)
 		return b.Put(key, val)
 	})
 }
 
-func Get(key []byte) []byte {
+func get(bucket []byte, key []byte) []byte {
 	var val []byte
 
 	err := db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(MyBucket)
+		b := tx.Bucket(bucket)
 		val = b.Get(key)
 		return nil
 	})
@@ -44,4 +46,12 @@ func Get(key []byte) []byte {
 		return nil
 	}
 	return val
+}
+
+func SetSettings(key []byte, val []byte) error {
+	return set(MySettings, key, val)
+}
+
+func GetSettings(key []byte) []byte {
+	return get(MySettings, key)
 }

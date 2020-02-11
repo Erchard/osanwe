@@ -52,7 +52,6 @@ func restoreAddress() net.IP {
 	c := ipindb[2]
 	d := ipindb[3]
 	return net.IPv4(a, b, c, d)
-
 }
 
 func saveNewPort(port int) {
