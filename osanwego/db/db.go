@@ -1,8 +1,13 @@
 package db
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"github.com/Erchard/osanwe/osanwego/nodekeys"
+	"github.com/Erchard/osanwe/osanwego/protocol"
 	"github.com/boltdb/bolt"
+	"github.com/golang/protobuf/proto"
+
 	"time"
 )
 
@@ -54,4 +59,36 @@ func SetSettings(key []byte, val []byte) error {
 
 func GetSettings(key []byte) []byte {
 	return get(MySettings, key)
+}
+
+func SaveNode(node *protocol.Node) error {
+
+	xy := append(node.Pubkey.X, node.Pubkey.Y...)
+	fmt.Printf("PubKey: %v \n", node.Pubkey)
+	fmt.Printf("X+Y: %v \n", xy)
+
+	hashNode := sha256.Sum256(xy)
+
+	nodeBytes, err := proto.Marshal(node)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return set(AddressBook, hashNode[:], nodeBytes)
+}
+
+func TestNode() {
+
+	x, y := nodekeys.GetPubKey()
+	ipindb := []byte{192, 168, 0, 201}
+
+	myNode := &protocol.Node{
+		Pubkey: &protocol.PubKey{
+			X: x,
+			Y: y,
+		},
+		Ipaddresses: [][]byte{ipindb},
+		Port:        8080,
+	}
+
+	SaveNode(myNode)
 }
