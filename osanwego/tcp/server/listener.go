@@ -41,7 +41,7 @@ func Start() error {
 
 func restoreAddress() net.IP {
 
-	ipindb := db.Get(ipindb)
+	ipindb := db.GetSettings(ipindb)
 	if ipindb == nil {
 		//ipindb = []byte{127, 0, 0, 1}
 		//ipindb = []byte{192, 168, 0, 102}
@@ -58,11 +58,11 @@ func saveNewPort(port int) {
 	fmt.Printf("Save new port: %v \n", port)
 	bs := make([]byte, 4)
 	binary.LittleEndian.PutUint32(bs, uint32(port))
-	db.Set(portindb, bs)
+	db.SetSettings(portindb, bs)
 }
 
 func restorePort() int {
-	bs := db.Get(portindb)
+	bs := db.GetSettings(portindb)
 	if bs != nil {
 		port := binary.LittleEndian.Uint32(bs)
 		return int(port)

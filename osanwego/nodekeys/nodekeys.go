@@ -16,7 +16,7 @@ var nodekey *ecdsa.PrivateKey
 
 func Restore() error {
 	fmt.Println("Restore node keys")
-	dkeyBytes = db.Get(keysindb)
+	dkeyBytes = db.GetSettings(keysindb)
 	if dkeyBytes == nil {
 		fmt.Println("Node keys not found. Creating...")
 		createKeys()
