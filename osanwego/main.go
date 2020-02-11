@@ -15,7 +15,7 @@ func main() {
 	must(db.Init())
 	must(nodekeys.Restore())
 	must(listener.Start())
-	must(db.TestNode())
+	db.TestNode()
 	must(network.Connect())
 
 	time.Sleep(5 * time.Second)
