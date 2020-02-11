@@ -2,12 +2,7 @@ syntax = "proto3";
 
 package protocol;
 
-message PubKey {
-    bytes X = 1;
-    bytes Y = 2;
-
-}
-
+import "pubkey.proto";
 
 message Greeting {
     int32 version = 1;
