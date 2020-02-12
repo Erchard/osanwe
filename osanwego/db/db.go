@@ -63,7 +63,8 @@ func GetSettings(key []byte) []byte {
 func SaveNode(node *protocol.Node) error {
 
 	xy := append(node.Pubkey.X, node.Pubkey.Y...)
-	fmt.Printf("PubKey: %x \n", node.Pubkey)
+	fmt.Printf("PubKey X: %x \n", node.Pubkey.X)
+	fmt.Printf("PubKey Y: %x \n", node.Pubkey.Y)
 	fmt.Printf("X+Y: %x \n", xy)
 
 	hashNode := sha256.Sum256(xy)
