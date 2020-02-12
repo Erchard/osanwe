@@ -68,6 +68,7 @@ func SaveNode(node *protocol.Node) error {
 	fmt.Printf("X+Y: %x \n", xy)
 
 	hashNode := sha256.Sum256(xy)
+	fmt.Printf("SHA256: %x \n", hashNode)
 
 	nodeBytes, err := proto.Marshal(node)
 	if err != nil {
