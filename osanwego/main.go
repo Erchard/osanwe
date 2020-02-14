@@ -45,4 +45,6 @@ func TestNode() {
 	}
 
 	db.SaveNode(myNode)
+
+	db.GetAllNodes()
 }
