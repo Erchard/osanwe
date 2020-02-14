@@ -92,8 +92,9 @@ func GetAllNodes() []*protocol.Node {
 			if err != nil {
 				fmt.Println(err.Error())
 			}
-			fmt.Println(node.Ipaddresses)
+			fmt.Println(len(nodelist))
 			nodelist = append(nodelist, node)
+			fmt.Println(len(nodelist))
 		}
 		return nil
 	})
