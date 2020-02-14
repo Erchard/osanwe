@@ -33,7 +33,7 @@ func must(err error) {
 func TestNode() {
 
 	x, y := nodekeys.CreateTestKey()
-	ipindb := []byte{192, 168, 0, 201}
+	ipindb := []byte{192, 168, 1, 201}
 
 	myNode := &protocol.Node{
 		Pubkey: &protocol.PubKey{
@@ -49,7 +49,7 @@ func TestNode() {
 	var nodelist []*protocol.Node = db.GetAllNodes()
 	fmt.Println(len(nodelist))
 	for i, node := range nodelist {
-		fmt.Printf("%v Node: %v \n", i, node)
+		fmt.Printf("%v Node: %x \n", i, node.Pubkey.X)
 	}
 
 }

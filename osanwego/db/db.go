@@ -84,9 +84,9 @@ func GetAllNodes() []*protocol.Node {
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(AddressBook)
 		c := b.Cursor()
-		node := &protocol.Node{}
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
+			node := &protocol.Node{}
 			fmt.Printf("key=%x, value=%x \n", k, v)
 			err := proto.Unmarshal(v, node)
 			if err != nil {
