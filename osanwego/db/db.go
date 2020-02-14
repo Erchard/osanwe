@@ -76,3 +76,20 @@ func SaveNode(node *protocol.Node) error {
 	}
 	return set(AddressBook, hashNode[:], nodeBytes)
 }
+
+func GetAllNodes() []*protocol.Node {
+
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(AddressBook)
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			fmt.Printf("key=%s, value=%s \n", k, v)
+		}
+	})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	return nil
+}
