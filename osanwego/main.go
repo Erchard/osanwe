@@ -46,5 +46,9 @@ func TestNode() {
 
 	db.SaveNode(myNode)
 
-	db.GetAllNodes()
+	nodelist := db.GetAllNodes()
+	for node := range nodelist {
+		fmt.Println("Node: %s \n", node)
+	}
+
 }

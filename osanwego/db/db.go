@@ -100,5 +100,5 @@ func GetAllNodes() []*protocol.Node {
 		fmt.Println(err.Error())
 	}
 
-	return nil
+	return nodelist
 }
