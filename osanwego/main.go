@@ -48,7 +48,7 @@ func TestNode() {
 
 	nodelist := db.GetAllNodes()
 	for node := range nodelist {
-		fmt.Println("Node: %s \n", node)
+		fmt.Printf("Node: %s \n", node)
 	}
 
 }
