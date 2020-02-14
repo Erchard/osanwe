@@ -32,7 +32,7 @@ func must(err error) {
 
 func TestNode() {
 
-	x, y := nodekeys.GetPubKey()
+	x, y := nodekeys.CreateTestKey()
 	ipindb := []byte{192, 168, 0, 201}
 
 	myNode := &protocol.Node{

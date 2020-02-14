@@ -58,3 +58,11 @@ func createKeys() {
 func GetPubKey() ([]byte, []byte) {
 	return nodekey.X.Bytes(), nodekey.Y.Bytes()
 }
+
+func CreateTestKey() ([]byte, []byte) {
+	privkey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return privkey.X.Bytes(), privkey.Y.Bytes()
+}
