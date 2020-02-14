@@ -86,6 +86,7 @@ func GetAllNodes() []*protocol.Node {
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			fmt.Printf("key=%s, value=%s \n", k, v)
 		}
+		return nil
 	})
 	if err != nil {
 		fmt.Println(err.Error())
