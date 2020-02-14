@@ -79,12 +79,20 @@ func SaveNode(node *protocol.Node) error {
 
 func GetAllNodes() []*protocol.Node {
 
+	nodelist := []*protocol.Node{}
+
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(AddressBook)
 		c := b.Cursor()
+		node := &protocol.Node{}
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			fmt.Printf("key=%x, value=%x \n", k, v)
+			err := proto.Unmarshal(v, node)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			nodelist = append(nodelist, node)
 		}
 		return nil
 	})
