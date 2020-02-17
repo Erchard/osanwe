@@ -28,5 +28,7 @@ func Connect() error {
 
 	fmt.Println(data)
 
+	client.Connect("192.168.0.105:8080")
+
 	return nil
 }

@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"bufio"
@@ -7,9 +7,9 @@ import (
 	"os"
 )
 
-func main() {
+func Connect(address string) {
 
-	conn, _ := net.Dial("tcp", "127.0.0.1:8080")
+	conn, _ := net.Dial("tcp", address)
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Text to send: ")
