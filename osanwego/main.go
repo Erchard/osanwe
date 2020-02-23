@@ -6,7 +6,6 @@ import (
 	"github.com/Erchard/osanwe/osanwego/network"
 	"github.com/Erchard/osanwe/osanwego/nodekeys"
 	"github.com/Erchard/osanwe/osanwego/protocol"
-	"github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
 	"time"
 )
@@ -15,7 +14,7 @@ func main() {
 	fmt.Println("Starting Osanwe")
 	must(db.Init())
 	must(nodekeys.Restore())
-	must(listener.Start())
+	//must(listener.Start())
 	TestNode()
 	must(network.Connect())
 
@@ -31,9 +30,10 @@ func must(err error) {
 }
 
 func TestNode() {
-
+	fmt.Println("Test Node")
 	x, y := nodekeys.CreateTestKey()
-	ipindb := []byte{192, 168, 0, 102}
+
+	ipindb := []byte{5, 187, 6, 75}
 
 	myNode := &protocol.Node{
 		Pubkey: &protocol.PubKey{
@@ -41,7 +41,7 @@ func TestNode() {
 			Y: y,
 		},
 		Ipaddresses: [][]byte{ipindb},
-		Port:        8080,
+		Port:        43773,
 	}
 
 	db.SaveNode(myNode)
