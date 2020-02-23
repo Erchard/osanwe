@@ -25,9 +25,10 @@ func main() {
 			case *net.IPAddr:
 				ip = v.IP
 			}
+			if ip.To4() != nil && !ip.IsLoopback() {
+				fmt.Println(ip)
+			}
 
-			fmt.Println(ip)
-			// process IP address
 		}
 	}
 
