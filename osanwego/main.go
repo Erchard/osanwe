@@ -6,6 +6,7 @@ import (
 	"github.com/Erchard/osanwe/osanwego/network"
 	"github.com/Erchard/osanwe/osanwego/nodekeys"
 	"github.com/Erchard/osanwe/osanwego/protocol"
+	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
 	"time"
 )
@@ -14,7 +15,7 @@ func main() {
 	fmt.Println("Starting Osanwe")
 	must(db.Init())
 	must(nodekeys.Restore())
-	//must(listener.Start())
+	must(listener.Start())
 	TestNode()
 	must(network.Connect())
 

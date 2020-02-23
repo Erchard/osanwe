@@ -5,8 +5,9 @@ package protocol;
 import "pubkey.proto";
 
 message Node {
-    PubKey pubkey = 1;
-    repeated bytes ipaddresses = 2;
-    int32 port = 3;
-    int64 lastactivity = 4;
+    bytes id = 1;
+    PubKey pubkey = 2;
+    repeated bytes ipaddresses = 3;
+    int32 port = 4;
+    int64 lastactivity = 5;
 }
