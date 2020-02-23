@@ -130,7 +130,7 @@ func getMyIpAddresses() net.IP {
 				ip = v.IP
 			}
 			if ip.To4() != nil && !ip.IsLoopback() {
-				fmt.Printf("My IP: %s", ip)
+				fmt.Printf("My IP: %s \n", ip)
 				return ip
 			}
 		}
