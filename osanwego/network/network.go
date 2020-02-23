@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/nodekeys"
 	"github.com/Erchard/osanwe/osanwego/protocol"
+	"github.com/Erchard/osanwe/osanwego/tcp/client"
 	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"github.com/golang/protobuf/proto"
 	"log"
@@ -27,6 +28,8 @@ func Connect() error {
 	}
 
 	fmt.Println(data)
+
+	client.Connect("192.168.0.105:8080")
 
 	return nil
 }
