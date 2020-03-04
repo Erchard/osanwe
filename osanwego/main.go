@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/network"
-	"github.com/Erchard/osanwe/osanwego/nodekeys"
 	"github.com/Erchard/osanwe/osanwego/protocol"
 	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
@@ -14,7 +14,7 @@ import (
 func main() {
 	fmt.Println("Starting Osanwe")
 	must(db.Init())
-	must(nodekeys.Restore())
+	must(mynode.Restore())
 	must(listener.Start())
 	TestNode()
 	must(network.Connect())
@@ -32,7 +32,7 @@ func must(err error) {
 
 func TestNode() {
 	fmt.Println("Test Node")
-	x, y := nodekeys.CreateTestKey()
+	x, y := mynode.CreateTestKey()
 
 	ipindb := []byte{5, 187, 6, 75}
 

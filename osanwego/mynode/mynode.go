@@ -1,4 +1,4 @@
-package nodekeys
+package mynode
 
 import (
 	"crypto/ecdsa"
@@ -9,14 +9,14 @@ import (
 	"math/big"
 )
 
-var keysindb = []byte("keysindb")
+var mynodekeys = []byte("mynodekeys")
 
 var dkeyBytes []byte
 var nodekey *ecdsa.PrivateKey
 
 func Restore() error {
 	fmt.Println("Restore node keys")
-	dkeyBytes = db.GetSettings(keysindb)
+	dkeyBytes = db.GetSettings(mynodekeys)
 	if dkeyBytes == nil {
 		fmt.Println("Node keys not found. Creating...")
 		createKeys()
@@ -48,7 +48,7 @@ func createKeys() {
 	nodekey = privkey
 	dkeyBytes = privkey.D.Bytes()
 
-	err = db.SetSettings(keysindb, dkeyBytes)
+	err = db.SetSettings(mynodekeys, dkeyBytes)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
