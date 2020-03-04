@@ -3,7 +3,7 @@ package network
 import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
-	"github.com/Erchard/osanwe/osanwego/nodekeys"
+	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/protocol"
 	"github.com/Erchard/osanwe/osanwego/tcp/client"
 	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
@@ -14,7 +14,7 @@ import (
 
 func Connect() error {
 	fmt.Println("Connecting to network")
-	x, y := nodekeys.GetPubKey()
+	x, y := mynode.GetPubKey()
 	greeting := &protocol.Greeting{
 		Version: 0,
 		Port:    listener.GetPort(),
