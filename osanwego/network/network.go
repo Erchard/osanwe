@@ -17,7 +17,7 @@ func Connect() error {
 	x, y := mynode.GetPubKey()
 	greeting := &protocol.Greeting{
 		Version: 0,
-		Port:    listener.GetPort(),
+		Port:    mynode.GetPort(),
 		Pubkey: &protocol.PubKey{
 			X: x,
 			Y: y,

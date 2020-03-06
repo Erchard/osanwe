@@ -162,11 +162,11 @@ func GetMainIP() net.IP {
 	return myNode.Ipaddresses[0]
 }
 
-func GetPort() int {
-	return int(myNode.Port)
+func GetPort() int32 {
+	return myNode.Port
 }
 
-func SaveNewPort(port int) {
-	myNode.Port = int32(port)
+func SaveNewPort(port int32) {
+	myNode.Port = port
 	saveMyNode()
 }
