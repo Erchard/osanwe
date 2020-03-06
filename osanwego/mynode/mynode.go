@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
 	"github.com/Erchard/osanwe/osanwego/protocol"
@@ -11,6 +12,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"time"
 )
 
 var mynodekeys = []byte("mynodekeys")
@@ -66,7 +68,23 @@ func createNewNode() {
 	fmt.Println("Create new node....")
 
 	myNode.Ipaddresses = getMyIpAddresses()
+	myNode.Port = 0
+	myNode.Pubkey = &protocol.PubKey{
+		X: nodekey.X.Bytes(),
+		Y: nodekey.Y.Bytes(),
+	}
 
+	xy := append(myNode.Pubkey.X, myNode.Pubkey.Y...)
+	hashNode := sha256.Sum256(xy)
+	myNode.Id = hashNode[:]
+	myNode.Lastactivity = time.Now().UnixNano()
+
+	data, err := proto.Marshal(myNode)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	db.SetSettings(mynodeindb, data)
 }
 
 func createKeys() {
@@ -122,13 +140,13 @@ func getMyIpAddresses() [][]byte {
 			case *net.IPAddr:
 				ip = v.IP
 			}
-			//if ip.To4() != nil && !ip.IsLoopback() {
-			fmt.Printf("My IP: %s \n", ip)
+			if ip.To4() != nil && !ip.IsLoopback() {
+				fmt.Printf("My IP: %s \n", ip)
 
-			ipAddresses = append(ipAddresses, ip.To4())
-			//}
+				ipAddresses = append(ipAddresses, ip.To4())
+			}
 		}
 	}
-	fmt.Printf("%x\n", ipAddresses)
+	//fmt.Printf("%x\n", ipAddresses)
 	return ipAddresses
 }
