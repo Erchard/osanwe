@@ -11,7 +11,7 @@ import (
 func Start() error {
 
 	var ipaddress net.IP = mynode.GetMainIP()
-	var port int = mynode.GetPort()
+	var port int = int(mynode.GetPort())
 
 	laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
 	addrString := laddr.String()
@@ -25,7 +25,7 @@ func Start() error {
 	if listener.Addr().(*net.TCPAddr).Port != port {
 		fmt.Printf("port: %v \n", port)
 		fmt.Printf("listener.Addr().(*net.TCPAddr).Port: %v \n", listener.Addr().(*net.TCPAddr).Port)
-		mynode.SaveNewPort(listener.Addr().(*net.TCPAddr).Port)
+		mynode.SaveNewPort(int32(listener.Addr().(*net.TCPAddr).Port))
 	}
 
 	fmt.Println("Listener start: " + listener.Addr().String())
