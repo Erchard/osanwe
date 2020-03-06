@@ -80,12 +80,18 @@ func createNewNode() {
 	myNode.Id = hashNode[:]
 	myNode.Lastactivity = time.Now().UnixNano()
 
+	saveMyNode()
+
+}
+
+func saveMyNode() {
 	data, err := proto.Marshal(myNode)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
 	db.SetSettings(mynodeindb, data)
+	fmt.Println("Node saved")
 }
 
 func createKeys() {
@@ -158,4 +164,9 @@ func GetMainIP() net.IP {
 
 func GetPort() int {
 	return int(myNode.Port)
+}
+
+func SaveNewPort(port int) {
+	myNode.Port = int32(port)
+	saveMyNode()
 }

@@ -27,7 +27,7 @@ func Start() error {
 	if listener.Addr().(*net.TCPAddr).Port != port {
 		fmt.Printf("port: %v \n", port)
 		fmt.Printf("listener.Addr().(*net.TCPAddr).Port: %v \n", listener.Addr().(*net.TCPAddr).Port)
-		saveNewPort(listener.Addr().(*net.TCPAddr).Port)
+		mynode.SaveNewPort(listener.Addr().(*net.TCPAddr).Port)
 	}
 
 	fmt.Println("Listener start: " + listener.Addr().String())
@@ -35,43 +35,6 @@ func Start() error {
 	acceptConnection(listener)
 
 	return nil
-}
-
-func restoreAddress() net.IP {
-
-	ipindb := db.GetSettings(ipindb)
-	if ipindb == nil {
-
-		//return getMyIpAddresses()
-		//ipindb = []byte{127, 0, 0, 1}
-		//ipindb = []byte{192, 168, 0, 102}
-		//ipindb = []byte{192, 168, 0, 201}
-	}
-	a := ipindb[0]
-	b := ipindb[1]
-	c := ipindb[2]
-	d := ipindb[3]
-	return net.IPv4(a, b, c, d)
-}
-
-func saveNewPort(port int) {
-	fmt.Printf("Save new port: %v \n", port)
-	bs := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bs, uint32(port))
-	db.SetSettings(portindb, bs)
-}
-
-func restorePort() int {
-	bs := db.GetSettings(portindb)
-	if bs != nil {
-		port := binary.LittleEndian.Uint32(bs)
-		return int(port)
-	}
-	return 0
-}
-
-func GetPort() int32 {
-	return int32(restorePort())
 }
 
 func acceptConnection(listener net.Listener) {
