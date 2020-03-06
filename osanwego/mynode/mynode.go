@@ -151,3 +151,11 @@ func getMyIpAddresses() [][]byte {
 	//fmt.Printf("%x\n", ipAddresses)
 	return ipAddresses
 }
+
+func getMainIP() net.IP {
+	return myNode.Ipaddresses[0]
+}
+
+func getPort() int {
+	return int(myNode.Port)
+}

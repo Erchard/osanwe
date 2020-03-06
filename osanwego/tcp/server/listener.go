@@ -5,17 +5,15 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	"github.com/Erchard/osanwe/osanwego/mynode"
 	"log"
 	"net"
 )
 
-var ipindb = []byte("ipindb")
-var portindb = []byte("portindb")
-
 func Start() error {
 
-	var ipaddress net.IP = restoreAddress()
-	var port int = restorePort()
+	var ipaddress net.IP = mynode.getMainIP()
+	var port int = mynode.getPort()
 
 	laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
 	addrString := laddr.String()
