@@ -2,9 +2,7 @@ package listener
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
-	"github.com/Erchard/osanwe/osanwego/db"
 	"github.com/Erchard/osanwe/osanwego/mynode"
 	"log"
 	"net"
