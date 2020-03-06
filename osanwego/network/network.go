@@ -6,7 +6,6 @@ import (
 	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/protocol"
 	"github.com/Erchard/osanwe/osanwego/tcp/client"
-	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"github.com/golang/protobuf/proto"
 	"log"
 	"net"
