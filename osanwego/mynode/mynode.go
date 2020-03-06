@@ -6,13 +6,19 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	"github.com/Erchard/osanwe/osanwego/protocol"
+	"github.com/golang/protobuf/proto"
+	"log"
 	"math/big"
 )
 
 var mynodekeys = []byte("mynodekeys")
+var mynodeindb = []byte("mynodeindb")
 
 var dkeyBytes []byte
 var nodekey *ecdsa.PrivateKey
+
+var myNode = &protocol.Node{}
 
 func Restore() error {
 	fmt.Println("Restore node keys")
@@ -35,7 +41,28 @@ func Restore() error {
 	}
 	fmt.Printf("privkey.D: %x \n", dkeyBytes)
 
+	restoreMyNode()
+
 	return nil
+}
+
+func restoreMyNode() {
+
+	data := db.GetSettings(mynodeindb)
+
+	if data == nil {
+		createNewNode()
+	} else {
+		err := proto.Unmarshal(data, myNode)
+		if err != nil {
+			log.Fatal("Unmarshaling error: ", err.Error())
+		}
+	}
+
+}
+
+func createNewNode() {
+	fmt.Println("Create new node....")
 }
 
 func createKeys() {
