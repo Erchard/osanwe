@@ -152,10 +152,10 @@ func getMyIpAddresses() [][]byte {
 	return ipAddresses
 }
 
-func getMainIP() net.IP {
+func GetMainIP() net.IP {
 	return myNode.Ipaddresses[0]
 }
 
-func getPort() int {
+func GetPort() int {
 	return int(myNode.Port)
 }

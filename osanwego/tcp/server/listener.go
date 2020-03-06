@@ -12,8 +12,8 @@ import (
 
 func Start() error {
 
-	var ipaddress net.IP = mynode.getMainIP()
-	var port int = mynode.getPort()
+	var ipaddress net.IP = mynode.GetMainIP()
+	var port int = mynode.GetPort()
 
 	laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
 	addrString := laddr.String()
