@@ -42,7 +42,7 @@ func TestNode() {
 			Y: y,
 		},
 		Ipaddresses: [][]byte{ipindb},
-		Port:        43773,
+		Port:        42647,
 	}
 
 	db.SaveNode(myNode)

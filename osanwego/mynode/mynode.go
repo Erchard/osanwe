@@ -60,7 +60,7 @@ func restoreMyNode() {
 		if err != nil {
 			log.Fatal("Unmarshaling error: ", err.Error())
 		}
-		fmt.Printf("My Node restored: %v \n", myNode)
+		fmt.Printf("My Node restored: %x \n", myNode.GetId())
 	}
 
 }
@@ -154,7 +154,7 @@ func getMyIpAddresses() [][]byte {
 			}
 		}
 	}
-	//fmt.Printf("%x\n", ipAddresses)
+
 	return ipAddresses
 }
 
