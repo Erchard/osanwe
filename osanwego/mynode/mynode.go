@@ -122,11 +122,11 @@ func getMyIpAddresses() [][]byte {
 			case *net.IPAddr:
 				ip = v.IP
 			}
-			if ip.To4() != nil && !ip.IsLoopback() {
-				fmt.Printf("My IP: %s \n", ip)
+			//if ip.To4() != nil && !ip.IsLoopback() {
+			fmt.Printf("My IP: %s \n", ip)
 
-				ipAddresses = append(ipAddresses, ip.To4())
-			}
+			ipAddresses = append(ipAddresses, ip.To4())
+			//}
 		}
 	}
 	fmt.Printf("%x\n", ipAddresses)
