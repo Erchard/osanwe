@@ -43,7 +43,8 @@ func restoreAddress() net.IP {
 
 	ipindb := db.GetSettings(ipindb)
 	if ipindb == nil {
-		return getMyIpAddresses()
+
+		//return getMyIpAddresses()
 		//ipindb = []byte{127, 0, 0, 1}
 		//ipindb = []byte{192, 168, 0, 102}
 		//ipindb = []byte{192, 168, 0, 201}
@@ -106,34 +107,4 @@ func handleConnection(conn net.Conn) {
 	conn.Write([]byte("you sent: " + response))
 
 	handleConnection(conn)
-}
-
-// https://play.golang.org/p/BDt3qEQ_2H
-func getMyIpAddresses() net.IP {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	// handle err
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		// handle err
-		for _, addr := range addrs {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip.To4() != nil && !ip.IsLoopback() {
-				fmt.Printf("My IP: %s \n", ip)
-				return ip
-			}
-		}
-	}
-	return nil
 }

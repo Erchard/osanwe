@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"log"
 	"math/big"
+	"net"
 )
 
 var mynodekeys = []byte("mynodekeys")
@@ -63,6 +64,9 @@ func restoreMyNode() {
 
 func createNewNode() {
 	fmt.Println("Create new node....")
+
+	myNode.Ipaddresses = getMyIpAddresses()
+
 }
 
 func createKeys() {
@@ -92,4 +96,39 @@ func CreateTestKey() ([]byte, []byte) {
 		fmt.Println(err.Error())
 	}
 	return privkey.X.Bytes(), privkey.Y.Bytes()
+}
+
+// https://play.golang.org/p/BDt3qEQ_2H
+func getMyIpAddresses() [][]byte {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	ipAddresses := make([][]byte, 0)
+
+	// handle err
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		// handle err
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip.To4() != nil && !ip.IsLoopback() {
+				fmt.Printf("My IP: %s \n", ip)
+
+				ipAddresses = append(ipAddresses, ip.To4())
+			}
+		}
+	}
+	fmt.Printf("%x\n", ipAddresses)
+	return ipAddresses
 }
