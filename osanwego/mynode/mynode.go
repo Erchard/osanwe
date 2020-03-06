@@ -60,6 +60,7 @@ func restoreMyNode() {
 		if err != nil {
 			log.Fatal("Unmarshaling error: ", err.Error())
 		}
+		fmt.Printf("My Node restored: %x \n", myNode)
 	}
 
 }
