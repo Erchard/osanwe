@@ -158,8 +158,8 @@ func getMyIpAddresses() [][]byte {
 	return ipAddresses
 }
 
-func GetMainIP() net.IP {
-	return myNode.Ipaddresses[0]
+func GeIPAdresses() [][]byte {
+	return myNode.Ipaddresses
 }
 
 func GetPort() int32 {

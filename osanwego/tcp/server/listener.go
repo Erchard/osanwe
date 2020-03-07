@@ -9,18 +9,12 @@ import (
 )
 
 func Start() error {
-
-	var ipaddress net.IP = mynode.GetMainIP()
-	var port int = int(mynode.GetPort())
-
-	laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
-	addrString := laddr.String()
-	fmt.Println(addrString)
-	listener, err := net.Listen("tcp", addrString)
+	listener, err := listen()
 	if err != nil {
-		log.Fatal("tcp server listener error:", err)
 		return err
 	}
+
+	var port int = int(mynode.GetPort())
 
 	if listener.Addr().(*net.TCPAddr).Port != port {
 		fmt.Printf("port: %v \n", port)
@@ -33,6 +27,23 @@ func Start() error {
 	go acceptConnection(listener)
 
 	return nil
+}
+
+func listen() (net.Listener, error) {
+	var ipaddresses [][]byte = mynode.GeIPAdresses()
+	var port int = int(mynode.GetPort())
+	for i, ipaddress := range ipaddresses {
+		laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
+		addrString := laddr.String()
+		fmt.Println(addrString)
+
+		listener, err := net.Listen("tcp", addrString)
+		if err != nil {
+			log.Fatal("tcp server listener error:", err)
+			return err
+		}
+	}
+
 }
 
 func acceptConnection(listener net.Listener) {
