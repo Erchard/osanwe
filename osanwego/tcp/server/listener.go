@@ -32,6 +32,7 @@ func Start() error {
 func listen() (net.Listener, error) {
 	var ipaddresses [][]byte = mynode.GeIPAdresses()
 	var port int = int(mynode.GetPort())
+	var err error
 	for i, ipaddress := range ipaddresses {
 		laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
 		addrString := laddr.String()
@@ -39,11 +40,12 @@ func listen() (net.Listener, error) {
 
 		listener, err := net.Listen("tcp", addrString)
 		if err != nil {
-			log.Fatal("tcp server listener error:", err)
-			return err
+			log.Printf("%n Address %s not available. \n%s\n", i, laddr, err)
+		} else {
+			return listener, nil
 		}
 	}
-
+	return nil, err
 }
 
 func acceptConnection(listener net.Listener) {
