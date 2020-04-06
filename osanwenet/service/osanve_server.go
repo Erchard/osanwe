@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwenet/pb"
+	"google.golang.org/grpc/peer"
 )
 
 type OsanweServer struct {
@@ -17,8 +18,11 @@ func (server *OsanweServer) Hello(ctx context.Context, req *pb.HelloRequest) (*p
 	msg := req.GetMsg()
 	fmt.Printf("Message from client: %v \n", msg)
 
+	p, ok := peer.FromContext(ctx)
+	respmsg := fmt.Sprintf("Client %v %v", ok, p)
+
 	resp := &pb.HelloResponse{
-		Msg: "Server is ok!",
+		Msg: respmsg,
 	}
 	return resp, nil
 }
