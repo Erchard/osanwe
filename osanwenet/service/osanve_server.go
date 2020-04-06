@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/Erchard/osanwe/osanwenet/pb"
 )
 
 type OsanweServer struct {
