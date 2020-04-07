@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package protocol;
+
+message PubKey {
+    bytes X = 1;
+    bytes Y = 2;
+}

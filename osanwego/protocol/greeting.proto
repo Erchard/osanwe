@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protocol;
+
+import "pubkey.proto";
+
+message Greeting {
+    int32 version = 1;
+    int32 port = 2;
+    PubKey pubkey = 3;
+}

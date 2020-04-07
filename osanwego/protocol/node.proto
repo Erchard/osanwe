@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package protocol;
+
+import "pubkey.proto";
+
+message Node {
+    bytes id = 1;
+    PubKey pubkey = 2;
+    repeated bytes ipaddresses = 3;
+    int32 port = 4;
+    int64 lastactivity = 5;
+}
