@@ -13,3 +13,5 @@ In dir `osanwego/protocol` compile command:
 ```shell script
 protoc -I=./ --go_out=./ *.proto
 ```
+
+	protoc --proto_path=proto proto/*.proto --go_out=plugins=grpc:pb
