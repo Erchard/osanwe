@@ -7,14 +7,14 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-type OsanweServer struct {
+type GreetingServer struct {
 }
 
-func NewOsanweServer() *OsanweServer {
-	return &OsanweServer{}
+func NewGreetingServer() *GreetingServer {
+	return &GreetingServer{}
 }
 
-func (server *OsanweServer) Hello(ctx context.Context, req *pb.GreetingRequest) (*pb.GreetingResponse, error) {
+func (server *GreetingServer) Greeting(ctx context.Context, req *pb.GreetingRequest) (*pb.GreetingResponse, error) {
 	pubkey := req.GetPubkey()
 	fmt.Printf("Pubkey client: %v \n", pubkey)
 

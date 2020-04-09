@@ -4,11 +4,19 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/mynode"
+	"github.com/Erchard/osanwe/osanwego/pb"
+	"github.com/Erchard/osanwe/osanwego/service"
+	"google.golang.org/grpc"
 	"log"
 	"net"
 )
 
 func Start() error {
+
+	greetingServer := service.NewGreetingServer()
+	grpcServer := grpc.NewServer()
+	pb.RegisterGreetingServiceServer(grpcServer, greetingServer)
+
 	listener, err := listen()
 	if err != nil {
 		return err
