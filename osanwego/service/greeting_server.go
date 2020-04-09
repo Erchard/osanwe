@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/Erchard/osanwe/osanwego/grpc/client"
 	"github.com/Erchard/osanwe/osanwego/pb"
 	"google.golang.org/grpc/peer"
 	"net"
@@ -23,7 +24,12 @@ func (server *GreetingServer) Greeting(ctx context.Context, req *pb.GreetingRequ
 	p, ok := peer.FromContext(ctx)
 
 	ipRemote, portRemote := parseAddr(p.Addr)
-
+	/// :)
+	client.Connect(net.TCPAddr{
+		IP:   ipRemote,
+		Port: int(req.Port),
+	}.String())
+	///
 	respmsg := fmt.Sprintf("Client %v %v", ok, p.Addr)
 	fmt.Println(respmsg)
 	resp := &pb.GreetingResponse{
