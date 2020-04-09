@@ -14,7 +14,7 @@ import (
 func Connect() error {
 	fmt.Println("Connecting to network")
 	x, y := mynode.GetPubKey()
-	greeting := &pb.Greeting{
+	greeting := &pb.GreetingRequest{
 		Version: 0,
 		Port:    mynode.GetPort(),
 		Pubkey: &pb.PubKey{
