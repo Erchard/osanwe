@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
-	"github.com/Erchard/osanwe/osanwego/protocol"
+	"github.com/Erchard/osanwe/osanwego/pb"
 	"github.com/golang/protobuf/proto"
 	"log"
 	"math/big"

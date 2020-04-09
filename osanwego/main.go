@@ -5,7 +5,7 @@ import (
 	"github.com/Erchard/osanwe/osanwego/db"
 	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/network"
-	"github.com/Erchard/osanwe/osanwego/protocol"
+	"github.com/Erchard/osanwe/osanwego/pb"
 	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
 	"time"
