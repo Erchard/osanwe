@@ -60,7 +60,7 @@ func GetSettings(key []byte) []byte {
 	return get(MySettings, key)
 }
 
-func SaveNode(node *protocol.Node) error {
+func SaveNode(node *pb.Node) error {
 
 	xy := append(node.Pubkey.X, node.Pubkey.Y...)
 	fmt.Printf("PubKey X: %x \n", node.Pubkey.X)
@@ -77,16 +77,16 @@ func SaveNode(node *protocol.Node) error {
 	return set(AddressBook, hashNode[:], nodeBytes)
 }
 
-func GetAllNodes() []*protocol.Node {
+func GetAllNodes() []*pb.Node {
 
-	nodelist := []*protocol.Node{}
+	nodelist := []*pb.Node{}
 
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(AddressBook)
 		c := b.Cursor()
 
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			node := &protocol.Node{}
+			node := &pb.Node{}
 			fmt.Printf("key=%x, value=%x \n", k, v)
 			err := proto.Unmarshal(v, node)
 			if err != nil {

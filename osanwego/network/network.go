@@ -14,10 +14,10 @@ import (
 func Connect() error {
 	fmt.Println("Connecting to network")
 	x, y := mynode.GetPubKey()
-	greeting := &protocol.Greeting{
+	greeting := &pb.Greeting{
 		Version: 0,
 		Port:    mynode.GetPort(),
-		Pubkey: &protocol.PubKey{
+		Pubkey: &pb.PubKey{
 			X: x,
 			Y: y,
 		},
@@ -30,7 +30,7 @@ func Connect() error {
 
 	fmt.Println(data)
 
-	var nodelist []*protocol.Node = db.GetAllNodes()
+	var nodelist []*pb.Node = db.GetAllNodes()
 	fmt.Println(len(nodelist))
 	for i, node := range nodelist {
 		fmt.Printf("%v Node: %x \n", i, node.Pubkey.X)

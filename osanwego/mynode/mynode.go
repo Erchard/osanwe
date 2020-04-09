@@ -21,7 +21,7 @@ var mynodeindb = []byte("mynodeindb")
 var dkeyBytes []byte
 var nodekey *ecdsa.PrivateKey
 
-var myNode = &protocol.Node{}
+var myNode = &pb.Node{}
 
 func Restore() error {
 	fmt.Println("Restore node keys")
@@ -70,7 +70,7 @@ func createNewNode() {
 
 	myNode.Ipaddresses = getMyIpAddresses()
 	myNode.Port = 0
-	myNode.Pubkey = &protocol.PubKey{
+	myNode.Pubkey = &pb.PubKey{
 		X: nodekey.X.Bytes(),
 		Y: nodekey.Y.Bytes(),
 	}

@@ -36,8 +36,8 @@ func AddSeedNode() {
 
 	ipindb := []byte{5, 187, 6, 75}
 
-	myNode := &protocol.Node{
-		Pubkey: &protocol.PubKey{
+	myNode := &pb.Node{
+		Pubkey: &pb.PubKey{
 			X: x,
 			Y: y,
 		},
@@ -47,7 +47,7 @@ func AddSeedNode() {
 
 	db.SaveNode(myNode)
 
-	var nodelist []*protocol.Node = db.GetAllNodes()
+	var nodelist []*pb.Node = db.GetAllNodes()
 	fmt.Println(len(nodelist))
 	for i, node := range nodelist {
 		fmt.Printf("%v Node: %x \n", i, node.Pubkey.X)

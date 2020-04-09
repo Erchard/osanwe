@@ -76,7 +76,7 @@ func (m *Greeting) GetPubkey() *PubKey {
 }
 
 func init() {
-	proto.RegisterType((*Greeting)(nil), "protocol.Greeting")
+	proto.RegisterType((*Greeting)(nil), "pb.Greeting")
 }
 
 func init() { proto.RegisterFile("greeting.proto", fileDescriptor_6acac03ccd168a87) }
