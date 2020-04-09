@@ -19,7 +19,7 @@ func main() {
 	AddSeedNode()
 	must(network.Connect())
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(50 * time.Second)
 	fmt.Println("All done!")
 }
 
