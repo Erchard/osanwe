@@ -16,8 +16,9 @@ func NewGreetingServer() *GreetingServer {
 }
 
 func (server *GreetingServer) Greeting(ctx context.Context, req *pb.GreetingRequest) (*pb.GreetingResponse, error) {
-	pubkey := req.GetPubkey()
-	fmt.Printf("Pubkey client: %v \n", pubkey)
+
+	fmt.Printf("Client port: %d \n", req.Port)
+	fmt.Printf("Pubkey client: %x %x \n", req.GetPubkey().GetX(), req.GetPubkey().GetY())
 
 	p, ok := peer.FromContext(ctx)
 
