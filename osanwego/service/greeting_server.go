@@ -25,10 +25,12 @@ func (server *GreetingServer) Greeting(ctx context.Context, req *pb.GreetingRequ
 
 	ipRemote, portRemote := parseAddr(p.Addr)
 	/// :)
-	client.Connect(net.TCPAddr{
+	laddr := net.TCPAddr{
 		IP:   ipRemote,
 		Port: int(req.Port),
-	}.String())
+	}
+	addrstr := laddr.String()
+	client.Connect(addrstr)
 	///
 	respmsg := fmt.Sprintf("Client %v %v", ok, p.Addr)
 	fmt.Println(respmsg)
