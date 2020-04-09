@@ -7,6 +7,7 @@ import (
 	"github.com/Erchard/osanwe/osanwego/pb"
 	"google.golang.org/grpc"
 	"log"
+	"net"
 )
 
 func Connect(address string) {
@@ -35,5 +36,5 @@ func Connect(address string) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Response from server: %v \n", res)
+	fmt.Printf("Response from server: %v \n", net.TCPAddr{IP: net.IP(res.Ipaddresses), Port: int(res.Port)})
 }
