@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	listener "github.com/Erchard/osanwe/osanwego/grpc/server"
 	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/network"
 	"github.com/Erchard/osanwe/osanwego/pb"
-	listener "github.com/Erchard/osanwe/osanwego/tcp/server"
 	"os"
 	"time"
 )

@@ -3,9 +3,9 @@ package network
 import (
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/db"
+	"github.com/Erchard/osanwe/osanwego/grpc/client"
 	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/pb"
-	"github.com/Erchard/osanwe/osanwego/tcp/client"
 	"github.com/golang/protobuf/proto"
 	"log"
 	"net"
