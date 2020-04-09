@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/osanwego/pb"
@@ -32,7 +31,7 @@ func Start() error {
 
 	fmt.Println("Listener start: " + listener.Addr().String())
 
-	go acceptConnection(listener)
+	go acceptConnection(listener, grpcServer)
 
 	return nil
 }
@@ -56,35 +55,9 @@ func listen() (net.Listener, error) {
 	return nil, err
 }
 
-func acceptConnection(listener net.Listener) {
-	for {
-		fmt.Println("Ready to connect...")
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal("tcp server accept error", err)
-		}
-
-		go handleConnection(conn)
-	}
-}
-
-func handleConnection(conn net.Conn) {
-	bufferBytes, err := bufio.NewReader(conn).ReadBytes('\n')
-
+func acceptConnection(listener net.Listener, grpcServer *grpc.Server) {
+	err := grpcServer.Serve(listener)
 	if err != nil {
-		fmt.Println(err)
-		log.Println("Client left..")
-		conn.Close()
-		return
+		log.Fatal(err)
 	}
-
-	message := string(bufferBytes)
-	clientAddr := conn.RemoteAddr().String()
-	response := fmt.Sprintf(message + " from " + clientAddr + "\n")
-
-	log.Println(response)
-
-	conn.Write([]byte("you sent: " + response))
-
-	handleConnection(conn)
 }
