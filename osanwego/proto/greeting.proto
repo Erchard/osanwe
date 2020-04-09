@@ -6,8 +6,18 @@ option go_package = "pb";
 
 import "pubkey.proto";
 
-message Greeting {
+message GreetingRequest {
     int32 version = 1;
     int32 port = 2;
     PubKey pubkey = 3;
+}
+
+message GreetingResponse {
+    bytes ipaddresses = 1;
+    int32 port = 2;
+    bool visible = 3;
+}
+
+service GreetingService {
+    rpc Greeting(GreetingRequest) returns (GreetingResponse) {}
 }

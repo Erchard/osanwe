@@ -68,7 +68,7 @@ func (m *PubKey) GetY() []byte {
 }
 
 func init() {
-	proto.RegisterType((*PubKey)(nil), "pb.PubKey")
+	proto.RegisterType((*PubKey)(nil), "protocol.PubKey")
 }
 
 func init() { proto.RegisterFile("pubkey.proto", fileDescriptor_a0315ee5eda72100) }

@@ -92,7 +92,7 @@ func (m *Node) GetLastactivity() int64 {
 }
 
 func init() {
-	proto.RegisterType((*Node)(nil), "pb.Node")
+	proto.RegisterType((*Node)(nil), "protocol.Node")
 }
 
 func init() { proto.RegisterFile("node.proto", fileDescriptor_0c843d59d2d938e7) }
