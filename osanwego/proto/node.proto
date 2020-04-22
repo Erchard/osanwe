@@ -11,4 +11,5 @@ message Node {
     repeated bytes ipaddresses = 3;
     int32 port = 4;
     int64 lastactivity = 5;
+    int64 lastupdate = 6;
 }
