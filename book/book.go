@@ -1,8 +1,8 @@
 package book
 
 import (
-	"github.com/Erchard/osanwe/osanweauth/auth"
-	"github.com/Erchard/osanwe/osanweauth/pb"
+	auth "github.com/Erchard/osanwe/auth"
+	pb "github.com/Erchard/osanwe/pb"
 )
 
 var pub_key *pb.PubKey
