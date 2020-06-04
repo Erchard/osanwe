@@ -7,7 +7,7 @@ import (
 
 var pub_key *pb.PubKey
 
-func init() {
+func Start() {
 	pub_key = auth.GetMyPubkey()
 
 }
