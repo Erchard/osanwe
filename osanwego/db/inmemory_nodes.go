@@ -33,5 +33,8 @@ func (store *InMemoryNodes) Save(node *pb.Node) error {
 		fmt.Println(err)
 		return err
 	}
+
+
+
 	return nil
 }
