@@ -7,7 +7,8 @@ import (
 
 var pub_key *pb.PubKey
 
-func Start() {
+func Start() error {
+	var err error
 	pub_key = auth.GetMyPubkey()
-
+	return err
 }

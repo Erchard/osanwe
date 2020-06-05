@@ -1,10 +1,18 @@
 package server
 
-import "github.com/Erchard/osanwe/book"
+import (
+	"github.com/Erchard/osanwe/book"
+	"github.com/Erchard/osanwe/db"
+)
 
 var Started = false
 
-func Start() {
+func Start() error {
+
+	var err error
+	err = db.Start()
+
 	Started = true
-	book.Start()
+	err = book.Start()
+	return err
 }
