@@ -10,6 +10,7 @@ message Node {
     PubKey pubkey = 2;
     repeated bytes ipaddresses = 3;
     int32 port = 4;
-    int64 lastactivity = 5;
-    int64 lastupdate = 6;
+    bool active = 5;
+    int64 lastactivity = 6;
+    int64 lastupdate = 7;
 }
