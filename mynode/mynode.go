@@ -30,7 +30,7 @@ func start() error {
 	if err != nil {
 		return err
 	}
-
+	err = Restore()
 	return err
 }
 
@@ -177,4 +177,8 @@ func GetPort() int32 {
 func SaveNewPort(port int32) {
 	myNode.Port = port
 	saveMyNode()
+}
+
+func GeIPAdresses() [][]byte {
+	return myNode.Ipaddresses
 }

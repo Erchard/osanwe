@@ -2,7 +2,7 @@ package listener
 
 import (
 	"fmt"
-	"github.com/Erchard/osanwe/db/mynode"
+	"github.com/Erchard/osanwe/mynode"
 	"google.golang.org/grpc"
 	"log"
 	"net"
