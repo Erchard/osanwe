@@ -3,6 +3,7 @@ package mynode
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"github.com/Erchard/osanwe/db"
@@ -40,6 +41,7 @@ func Required() error {
 		return nil
 	} else {
 		err = start()
+		started = true
 		return err
 	}
 }
@@ -93,6 +95,7 @@ func createNewNode() {
 	hashNode := sha256.Sum256(xy)
 	myNode.Id = hashNode[:]
 	myNode.Lastactivity = time.Now().UnixNano()
+	myNode.Active = true
 
 	saveMyNode()
 
@@ -112,6 +115,23 @@ func restoreMyNode() {
 		fmt.Printf("My Node restored: %x \n", myNode.GetId())
 	}
 
+}
+
+func createKeys() {
+	privkey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Printf("\n %x \n", privkey)
+
+	nodekey = privkey
+	dkeyBytes = privkey.D.Bytes()
+
+	err = db.SetSettings(mynodekeys, dkeyBytes)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Println("Save key to DB")
 }
 
 func Restore() error {

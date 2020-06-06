@@ -21,6 +21,7 @@ func Required() error {
 		return nil
 	} else {
 		err = start()
+		started = true
 		return err
 	}
 }
