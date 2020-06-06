@@ -13,7 +13,10 @@ go get -u github.com/golang/protobuf/protoc-gen-go
 go get google.golang.org/grpc
 ```
 
-In dir `osanweauth` compile command:
+In dir `osanwego/pb` compile command:
+```shell script
+protoc -I=./ --go_out=./ *.proto
+```
 
 ```shell script
 	protoc --proto_path=proto proto/*.proto --go_out=plugins=grpc:pb
@@ -21,8 +24,4 @@ In dir `osanweauth` compile command:
 
 ```shell script	
 	go get -u  github.com/Erchard/osanwe/osanwego
-```
-
-```shell script
-protoc -I=./ --go_out=./ *.proto
 ```

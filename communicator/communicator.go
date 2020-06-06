@@ -1,16 +1,18 @@
-package book
+package communicator
 
 import (
-	"fmt"
-	"github.com/Erchard/osanwe/pb"
+	"github.com/Erchard/osanwe/book"
+	"github.com/Erchard/osanwe/db"
 )
 
-var pub_key *pb.PubKey
 var started = false
 
 func start() error {
+
 	var err error
-	fmt.Println("Book started")
+	err = db.Required()
+
+	err = book.Required()
 	return err
 }
 

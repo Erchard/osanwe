@@ -2,11 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/Erchard/osanwe/server"
+	"github.com/Erchard/osanwe/communicator"
 )
 
 func main() {
 	fmt.Println("Osanwe 0.3")
-	server.Start()
-	fmt.Println(server.Started)
+	err := communicator.Required()
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("Osanwe started")
+	}
+
 }

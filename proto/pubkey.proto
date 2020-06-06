@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package protocol;
-option go_package = "pb";
+option go_package =  ".;pb";
 
 message PubKey {
     bytes X = 1;
