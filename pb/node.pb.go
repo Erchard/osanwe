@@ -76,6 +76,7 @@ func (x *Node) GetId() []byte {
 		return x.Id
 	}
 	return nil
+
 }
 
 func (x *Node) GetPubkey() *PubKey {

@@ -35,19 +35,25 @@ func Start() error {
 }
 
 func listen() (net.Listener, error) {
+
 	var ipaddresses [][]byte = mynode.GeIPAdresses()
+
 	var port int = int(mynode.GetPort())
 	var err error
 	for i, ipaddress := range ipaddresses {
-		laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
-		addrString := laddr.String()
-		fmt.Println(addrString)
+		if ipaddress != nil {
+			laddr := net.TCPAddr{IP: ipaddress, Port: port} // Port == 0 - free port
+			addrString := laddr.String()
+			//fmt.Println("addrString:" + addrString)
 
-		listener, err := net.Listen("tcp", addrString)
-		if err != nil {
-			log.Printf("%n Address %s not available. \n%s\n", i, laddr, err)
-		} else {
-			return listener, nil
+			listener, err := net.Listen("tcp", addrString)
+			if err != nil {
+				log.Printf("%n Address %s not available. \n%s\n", i, laddr, err)
+				ipaddresses[i] = nil
+				mynode.SaveIPAdresses(ipaddresses)
+			} else {
+				return listener, nil
+			}
 		}
 	}
 	return nil, err

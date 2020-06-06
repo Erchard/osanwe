@@ -13,7 +13,9 @@ func start() error {
 
 	var err error
 	err = db.Required()
+
 	err = mynode.Required()
+
 	listener.Start()
 	err = book.Required()
 	return err

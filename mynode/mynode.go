@@ -26,11 +26,15 @@ var myNode = &pb.Node{}
 
 func start() error {
 	var err error
+
 	err = db.Required()
+
 	if err != nil {
 		return err
 	}
+
 	err = Restore()
+
 	return err
 }
 
@@ -40,7 +44,9 @@ func Required() error {
 	if started {
 		return nil
 	} else {
+
 		err = start()
+
 		started = true
 		return err
 	}
@@ -94,9 +100,11 @@ func createNewNode() {
 	xy := append(myNode.Pubkey.X, myNode.Pubkey.Y...)
 	hashNode := sha256.Sum256(xy)
 	myNode.Id = hashNode[:]
+	fmt.Printf("myNode.Id %x \n", myNode.Id)
 	myNode.Lastactivity = time.Now().UnixNano()
 	myNode.Active = true
 
+	fmt.Printf("My Node saving: %x \n", myNode.GetId())
 	saveMyNode()
 
 }
@@ -112,7 +120,9 @@ func restoreMyNode() {
 		if err != nil {
 			log.Fatal("Unmarshaling error: ", err.Error())
 		}
-		fmt.Printf("My Node restored: %x \n", myNode.GetId())
+
+		fmt.Printf("My Node restored:\n%x \n", myNode.GetId())
+
 	}
 
 }
@@ -122,7 +132,7 @@ func createKeys() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	fmt.Printf("\n %x \n", privkey)
+	fmt.Printf("\n PK: %x \n", privkey)
 
 	nodekey = privkey
 	dkeyBytes = privkey.D.Bytes()
@@ -181,4 +191,18 @@ func SaveNewPort(port int32) {
 
 func GeIPAdresses() [][]byte {
 	return myNode.Ipaddresses
+}
+
+func SaveIPAdresses(ipaddresses [][]byte) {
+
+	ipArray := make([][]byte, 0)
+
+	for _, ipaddress := range ipaddresses {
+		if ipaddress != nil {
+			ipArray = append(ipArray, ipaddress)
+		}
+	}
+
+	myNode.Ipaddresses = ipArray
+	saveMyNode()
 }
