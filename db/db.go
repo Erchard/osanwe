@@ -1,8 +1,11 @@
 package db
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"github.com/Erchard/osanwe/pb"
 	"github.com/boltdb/bolt"
+	"github.com/golang/protobuf/proto"
 	"time"
 )
 
@@ -64,4 +67,49 @@ func SetSettings(key []byte, val []byte) error {
 
 func GetSettings(key []byte) []byte {
 	return get(MySettings, key)
+}
+
+func SaveNode(node *pb.Node) error {
+
+	xy := append(node.Pubkey.X, node.Pubkey.Y...)
+	fmt.Printf("PubKey X: %x \n", node.Pubkey.X)
+	fmt.Printf("PubKey Y: %x \n", node.Pubkey.Y)
+	fmt.Printf("X+Y: %x \n", xy)
+
+	hashNode := sha256.Sum256(xy)
+	fmt.Printf("SHA256: %x \n", hashNode)
+
+	nodeBytes, err := proto.Marshal(node)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return set(AddressBook, hashNode[:], nodeBytes)
+}
+
+func GetAllNodes() []*pb.Node {
+
+	nodelist := []*pb.Node{}
+
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(AddressBook)
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			node := &pb.Node{}
+			fmt.Printf("key=%x, value=%x \n", k, v)
+			err := proto.Unmarshal(v, node)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+
+			nodelist = append(nodelist, node)
+
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	return nodelist
 }

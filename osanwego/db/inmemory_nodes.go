@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"github.com/Erchard/osanwe/osanwego/pb"
+	"github.com/Erchard/osanwe/pb"
 	"github.com/jinzhu/copier"
 	"sync"
 )
@@ -33,8 +33,6 @@ func (store *InMemoryNodes) Save(node *pb.Node) error {
 		fmt.Println(err)
 		return err
 	}
-
-
 
 	return nil
 }

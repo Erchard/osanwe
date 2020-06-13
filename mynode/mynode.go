@@ -5,13 +5,17 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/Erchard/osanwe/db"
+	"github.com/Erchard/osanwe/osanwego/mynode"
 	"github.com/Erchard/osanwe/pb"
 	"github.com/golang/protobuf/proto"
 	"log"
 	"math/big"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -109,6 +113,67 @@ func createNewNode() {
 
 }
 
+func CreateSeedNode(address string, pubKey_X string, pubKey_Y string) *pb.Node {
+
+	address_ip_port := strings.Split(address, ":")
+	ipaddress := net.ParseIP(address_ip_port[0])
+	port, err := strconv.Atoi(address_ip_port[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var x []byte = nil
+	var y []byte = nil
+
+	x, err = hex.DecodeString(pubKey_X)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	y, err = hex.DecodeString(pubKey_Y)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	newNode := &pb.Node{
+		Pubkey: &pb.PubKey{
+			X: x,
+			Y: y,
+		},
+		Ipaddresses: [][]byte{ipaddress},
+		Port:        int32(port),
+	}
+	xy := append(newNode.Pubkey.X, newNode.Pubkey.Y...)
+	hashNode := sha256.Sum256(xy)
+	newNode.Id = hashNode[:]
+
+	return newNode
+}
+
+func CreateTestNode() *pb.Node {
+	fmt.Println("Create test Node")
+	x, y := mynode.CreateTestKey()
+
+	ipindb := []byte{5, 187, 6, 75}
+
+	testNode := &pb.Node{
+		Pubkey: &pb.PubKey{
+			X: x,
+			Y: y,
+		},
+		Ipaddresses: [][]byte{ipindb},
+		Port:        42647,
+	}
+	xy := append(testNode.Pubkey.X, testNode.Pubkey.Y...)
+	hashNode := sha256.Sum256(xy)
+	testNode.Id = hashNode[:]
+	fmt.Printf("testNode.Id %x \n", testNode.Id)
+	testNode.Lastactivity = time.Now().UnixNano()
+	testNode.Active = true
+
+	return testNode
+}
+
 func restoreMyNode() {
 
 	data := db.GetSettings(mynodeindb)
@@ -142,6 +207,14 @@ func createKeys() {
 		fmt.Println(err.Error())
 	}
 	fmt.Println("Save key to DB")
+}
+
+func CreateTestKey() ([]byte, []byte) {
+	privkey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return privkey.X.Bytes(), privkey.Y.Bytes()
 }
 
 func Restore() error {

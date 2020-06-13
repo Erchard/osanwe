@@ -3,7 +3,7 @@ package db
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/Erchard/osanwe/osanwego/pb"
+	"github.com/Erchard/osanwe/pb"
 	"github.com/boltdb/bolt"
 	"github.com/golang/protobuf/proto"
 
