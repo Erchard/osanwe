@@ -23,10 +23,9 @@ To build the Osanwe project from source, follow these steps:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/osanwe.git
+   git clone https://github.com/Erchard/osanwe.git
    cd osanwe
    ```
-
 2. **Install Rust**:
    Ensure you have Rust installed on your machine. You can install it using [rustup](https://rustup.rs/).
 
@@ -64,4 +63,5 @@ Contributions are welcome! If you would like to contribute to the project, pleas
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the X11 License. See the [LICENSE](LICENSE) file for more details.
+
