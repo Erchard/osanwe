@@ -1,0 +1,8 @@
+[package]
+name = "osanwecli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+osanwelib = { path = "../osanwelib" }
+clap = { version = "4.0", features = ["derive"] }
