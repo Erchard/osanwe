@@ -9,14 +9,31 @@ use std::fs;
 // AES-256 CBC
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
-fn encrypt(data: &[u8], key: &[u8], iv: &[u8]) -> String {
-    let cipher = Aes256Cbc::new_from_slices(key, iv).unwrap();
+pub const OSANWE_KEY: &str = "osanwe";
+
+/// Допоміжна функція, що створює cipher (AES-256 CBC) із `external_key`.
+fn create_cipher(external_key: &[u8]) -> Aes256Cbc {
+    let mut hasher = Keccak256::new();
+    hasher.update(external_key);
+
+    // 32-байтовий ключ
+    let sym_key = hasher.finalize();
+    // Перші 16 байтів від симетричного ключа — IV
+    let iv = &sym_key[0..16];
+
+    Aes256Cbc::new_from_slices(&sym_key, iv).unwrap()
+}
+
+/// Зашифрувати байти `data`, використовуючи хеш від `external_key`.
+fn encrypt(data: &[u8], external_key: &[u8]) -> String {
+    let cipher = create_cipher(external_key);
     let encrypted_data = cipher.encrypt_vec(data);
     encode(encrypted_data)
 }
 
-fn decrypt(data: &str, key: &[u8], iv: &[u8]) -> Vec<u8> {
-    let cipher = Aes256Cbc::new_from_slices(key, iv).unwrap();
+/// Розшифрувати рядок (hex) `data`, використовуючи хеш від `external_key`.
+fn decrypt(data: &str, external_key: &[u8]) -> Vec<u8> {
+    let cipher = create_cipher(external_key);
     let encrypted_data = decode(data).unwrap();
     cipher.decrypt_vec(&encrypted_data).unwrap()
 }
@@ -49,18 +66,9 @@ pub fn insert_property(
     value: &str,
     external_key: &[u8],
 ) -> Result<()> {
-    let mut hasher = Keccak256::new();
-
-    // Оновлення хешера з зовнішнім ключем
-    hasher.update(external_key);
-
-    let sym_key = hasher.finalize();
-
-
-    let iv = &sym_key[0..16];
-
+  
     // Шифрування значення
-    let encrypted_value = encrypt(value.as_bytes(), &sym_key, iv);
+    let encrypted_value = encrypt(value.as_bytes(), external_key);
 
     // Вставка в базу даних
     conn.execute(
@@ -71,34 +79,23 @@ pub fn insert_property(
     Ok(())
 }
 
-
 pub fn get_property_by_key(conn: &Connection, key: &str, external_key: &[u8]) -> Result<String> {
-    let mut hasher = Keccak256::new();
-
-    // Оновлення хешера з зовнішнім ключем
-    hasher.update(external_key);
-
-    let sym_key = hasher.finalize();
-    let iv = &sym_key[0..16];
-
+  
     // Підготовка запиту для отримання властивості
     let mut stmt = conn.prepare("SELECT property_value FROM properties WHERE property_key = ?1")?;
     let encrypted_value: String = stmt.query_row([key], |row| row.get(0))?;
 
     // Розшифрування значення
-    let decrypted_value = String::from_utf8(decrypt(&encrypted_value, &sym_key, iv)).unwrap();
+    let decrypted_value = String::from_utf8(decrypt(&encrypted_value, external_key)).unwrap();
 
     Ok(decrypted_value)
 }
 
 pub fn is_password_set(conn: &Connection) -> Result<bool> {
-    let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = 'osanwe'")?;
-    let count: i64 = stmt.query_row([], |row| row.get(0))?;
+    let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")?;
+    let count: i64 = stmt.query_row([OSANWE_KEY], |row| row.get(0))?;
     Ok(count > 0)
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -176,13 +173,7 @@ mod tests {
             )
             .unwrap();
 
-            let mut hasher = Keccak256::new();
-            hasher.update(external_key);
-            let sym_key = hasher.finalize(); // 32 байти
-            let iv = &sym_key[0..16];
-            
-            let expected_encrypted_value = encrypt(value.as_bytes(), &sym_key, iv);
-            
+        let expected_encrypted_value = encrypt(value.as_bytes(), external_key);
 
         assert_eq!(
             encrypted_value, expected_encrypted_value,
@@ -192,14 +183,12 @@ mod tests {
         let _ = fs::remove_file(db_path);
     }
 
-
     #[test]
     fn test_encrypt() {
         let data = b"test data";
-        let key = b"0123456789abcdef0123456789abcdef"; // 32 bytes for AES-256
-        let iv = b"0123456789abcdef"; // 16 bytes for AES block size
+        let external_key = b"0123456789abcdef";
 
-        let encrypted = encrypt(data, key, iv);
+        let encrypted = encrypt(data, external_key);
 
         // Переконайтеся, що зашифровані дані не є такими ж, як вихідні
         assert_ne!(encrypted, encode(data));
@@ -208,11 +197,10 @@ mod tests {
     #[test]
     fn test_decrypt() {
         let data = b"test data";
-        let key = b"0123456789abcdef0123456789abcdef"; // 32 bytes for AES-256
-        let iv = b"0123456789abcdef"; // 16 bytes for AES block size
+        let external_key = b"0123456789abcdef";
 
-        let encrypted = encrypt(data, key, iv);
-        let decrypted = decrypt(&encrypted, key, iv);
+        let encrypted = encrypt(data, external_key);
+        let decrypted = decrypt(&encrypted, external_key);
 
         // Переконайтеся, що розшифровані дані відповідають вихідним
         assert_eq!(decrypted, data.to_vec());
