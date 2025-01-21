@@ -71,27 +71,6 @@ pub fn insert_property(
     Ok(())
 }
 
-pub fn get_properties(conn: &Connection, external_key: &[u8]) -> Result<Vec<(String, String)>> {
-    let mut hasher = Keccak256::new();
-    hasher.update(external_key);
-    let sym_key = hasher.finalize();
-    let iv = &sym_key[0..16];
-
-    let mut stmt = conn.prepare("SELECT property_key, property_value FROM properties")?;
-    let property_iter = stmt.query_map([], |row| {
-        let key: String = row.get(0)?;
-        let encrypted_value: String = row.get(1)?;
-        let decrypted_value = String::from_utf8(decrypt(&encrypted_value, &sym_key, iv)).unwrap();
-        Ok((key, decrypted_value))
-    })?;
-
-    let mut properties = Vec::new();
-    for property in property_iter {
-        properties.push(property?);
-    }
-
-    Ok(properties)
-}
 
 pub fn get_property_by_key(conn: &Connection, key: &str, external_key: &[u8]) -> Result<String> {
     let mut hasher = Keccak256::new();
@@ -111,6 +90,15 @@ pub fn get_property_by_key(conn: &Connection, key: &str, external_key: &[u8]) ->
 
     Ok(decrypted_value)
 }
+
+pub fn is_password_set(conn: &Connection) -> Result<bool> {
+    let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = 'osanwe'")?;
+    let count: i64 = stmt.query_row([], |row| row.get(0))?;
+    Ok(count > 0)
+}
+
+
+
 
 #[cfg(test)]
 mod tests {
@@ -204,24 +192,6 @@ mod tests {
         let _ = fs::remove_file(db_path);
     }
 
-    #[test]
-    fn test_get_properties() {
-        let db_path = "test_get_database.db";
-        let _ = fs::remove_file(db_path);
-        let conn = Connection::open(db_path).unwrap();
-        create_database(&conn).unwrap();
-
-        let external_key = b"0123456789abcdef"; // Зовнішній ключ для шифрування
-        insert_property(&conn, "key1", "value1", external_key).unwrap();
-        insert_property(&conn, "key2", "value2", external_key).unwrap();
-
-        let properties = get_properties(&conn, external_key).unwrap(); // Додано external_key
-        assert_eq!(properties.len(), 2); // Має бути 2 записи
-        assert_eq!(properties[0].0, "key1");
-        assert_eq!(properties[1].0, "key2");
-
-        let _ = fs::remove_file(db_path);
-    }
 
     #[test]
     fn test_encrypt() {
