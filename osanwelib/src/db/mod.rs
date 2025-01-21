@@ -10,6 +10,7 @@ use std::fs;
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 pub const OSANWE_KEY: &str = "osanwe";
+pub const TEST_PHRASE: &str = "interchange of thought";
 
 /// Допоміжна функція, що створює cipher (AES-256 CBC) із `external_key`.
 fn create_cipher(external_key: &[u8]) -> Aes256Cbc {
@@ -66,13 +67,13 @@ pub fn insert_property(
     value: &str,
     external_key: &[u8],
 ) -> Result<()> {
-  
     // Шифрування значення
     let encrypted_value = encrypt(value.as_bytes(), external_key);
 
     // Вставка в базу даних
     conn.execute(
-        "INSERT INTO properties (property_key, property_value) VALUES (?1, ?2)",
+        "INSERT OR REPLACE INTO properties (property_key, property_value)
+        VALUES (?1, ?2)",
         (key, encrypted_value),
     )?;
 
@@ -80,7 +81,6 @@ pub fn insert_property(
 }
 
 pub fn get_property_by_key(conn: &Connection, key: &str, external_key: &[u8]) -> Result<String> {
-  
     // Підготовка запиту для отримання властивості
     let mut stmt = conn.prepare("SELECT property_value FROM properties WHERE property_key = ?1")?;
     let encrypted_value: String = stmt.query_row([key], |row| row.get(0))?;
@@ -95,6 +95,11 @@ pub fn is_password_set(conn: &Connection) -> Result<bool> {
     let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")?;
     let count: i64 = stmt.query_row([OSANWE_KEY], |row| row.get(0))?;
     Ok(count > 0)
+}
+
+pub fn is_password_correct(conn: &Connection, external_key: &[u8]) -> Result<bool> {
+    let test_phrase = get_property_by_key(conn, OSANWE_KEY, external_key).unwrap();
+    Ok(test_phrase == TEST_PHRASE)
 }
 
 #[cfg(test)]
@@ -246,5 +251,42 @@ mod tests {
             "Symmetric key is too short: {}",
             sym_key.len()
         );
+    }
+
+    #[test]
+    fn test_is_password_correct() {
+        let db_path = "test_is_password_correct.db";
+
+        // Видаляємо файл БД перед тестом, щоб не було старих даних
+        let _ = fs::remove_file(db_path);
+
+        let conn = Connection::open(db_path).unwrap();
+        create_database(&conn).unwrap();
+
+        let external_key = b"0123456789abcdef";
+
+        // 1. Вставляємо правильну фразу (TEST_PHRASE) для ключа OSANWE_KEY
+        insert_property(&conn, OSANWE_KEY, TEST_PHRASE, external_key).unwrap();
+
+        // 2. Тепер перевіряємо, чи пароль правильний
+        let result_correct = is_password_correct(&conn, external_key).unwrap();
+        assert!(
+            result_correct,
+            "Expected password to be correct (true), but got false"
+        );
+
+        // 3. Оновлюємо існуючий запис, щоб він був неправильним
+
+        insert_property(&conn, OSANWE_KEY, "wrong phrase", external_key).unwrap();
+
+        // 4. Тепер має повертати false
+        let result_incorrect = is_password_correct(&conn, external_key).unwrap();
+        assert!(
+            !result_incorrect,
+            "Expected password to be incorrect (false), but got true"
+        );
+
+        // Прибираємо за собою
+        let _ = fs::remove_file(db_path);
     }
 }
