@@ -50,7 +50,7 @@ pub fn check_and_create_database(db_path: &str) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-pub fn create_database(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
+pub fn create_database(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS properties (
                   property_key   TEXT PRIMARY KEY,
@@ -91,7 +91,8 @@ pub fn get_property_by_key(conn: &Connection, key: &str, external_key: &[u8]) ->
     Ok(decrypted_value)
 }
 
-pub fn is_password_set(conn: &Connection) -> Result<bool> {
+pub fn is_password_set(db_path: &str) -> Result<bool> {
+    let conn = Connection::open(db_path)?;
     let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")?;
     let count: i64 = stmt.query_row([OSANWE_KEY], |row| row.get(0))?;
     Ok(count > 0)
@@ -100,6 +101,14 @@ pub fn is_password_set(conn: &Connection) -> Result<bool> {
 pub fn is_password_correct(conn: &Connection, external_key: &[u8]) -> Result<bool> {
     let test_phrase = get_property_by_key(conn, OSANWE_KEY, external_key).unwrap();
     Ok(test_phrase == TEST_PHRASE)
+}
+
+pub fn set_password(db_path: &str, password: &str) -> Result<()> {
+    let conn = Connection::open(db_path)?;
+    create_database(&conn)?; // Переконуємося, що таблиця існує
+    insert_property(&conn, OSANWE_KEY, TEST_PHRASE, password.as_bytes())?;
+    println!("Password has been successfully set.");
+    Ok(())
 }
 
 #[cfg(test)]
@@ -288,5 +297,37 @@ mod tests {
 
         // Прибираємо за собою
         let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn test_set_password() {
+        let db_path = "test_set_password.db";
+        let _ = fs::remove_file(db_path);
+        let external_key = "mypassword";
+
+        // Установка паролю
+        set_password(db_path, external_key).unwrap();
+
+        // Перевірка, що пароль коректно встановлено
+        let conn = Connection::open(db_path).unwrap();
+        let is_correct = is_password_correct(&conn, external_key.as_bytes()).unwrap();
+        assert!(is_correct, "Password should be correct");
+    }
+
+    #[test]
+    fn test_set_password_persistence() {
+        let db_path = "test_set_password_persistence.db";
+        let _ = fs::remove_file(db_path);
+        let external_key = "persistpassword";
+
+        // Встановлення пароля
+        set_password(db_path, external_key).unwrap();
+
+        // Закриваємо з'єднання та відкриваємо нове
+        let conn = Connection::open(db_path).unwrap();
+        assert!(
+            is_password_correct(&conn, external_key.as_bytes()).unwrap(),
+            "Password should persist after reopening DB"
+        );
     }
 }

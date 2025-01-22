@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 osanwelib = { path = "../osanwelib" }
 clap = { version = "4.0", features = ["derive"] }
+rpassword = "7.2"
