@@ -5,12 +5,15 @@ use hex::{decode, encode};
 use rusqlite::{Connection, Result};
 use sha3::{Digest, Keccak256};
 use std::fs;
+use crate::keys;
 
 // AES-256 CBC
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 pub const OSANWE_KEY: &str = "osanwe";
 pub const TEST_PHRASE: &str = "interchange of thought";
+pub const PRIV_KEY: &str = "priv_key";
+pub const WALLET: &str = "wallet";
 
 /// Допоміжна функція, що створює cipher (AES-256 CBC) із `external_key`.
 fn create_cipher(external_key: &[u8]) -> Aes256Cbc {
@@ -103,11 +106,25 @@ pub fn is_password_correct(conn: &Connection, external_key: &[u8]) -> Result<boo
     Ok(test_phrase == TEST_PHRASE)
 }
 
-pub fn set_password(db_path: &str, password: &str) -> Result<()> {
+pub fn set_password(db_path: &str, external_key:&[u8]) -> Result<()> {
     let conn = Connection::open(db_path)?;
     create_database(&conn)?; // Переконуємося, що таблиця існує
-    insert_property(&conn, OSANWE_KEY, TEST_PHRASE, password.as_bytes())?;
+    insert_property(&conn, OSANWE_KEY, TEST_PHRASE, external_key)?;
     println!("Password has been successfully set.");
+    let address = keys::generate_save_keypair(db_path, external_key);
+    println!("Generated Ethereum Address: {:?}", address);
+    Ok(())
+}
+
+pub fn save_keypair(
+    db_path: &str,
+    signing_key: &str,
+    address: &str,
+    external_key: &[u8],
+) -> Result<()> {
+    let conn = Connection::open(db_path)?;
+    insert_property(&conn, PRIV_KEY, signing_key, external_key)?;
+    insert_property(&conn, WALLET, address, external_key)?;
     Ok(())
 }
 
@@ -303,14 +320,14 @@ mod tests {
     fn test_set_password() {
         let db_path = "test_set_password.db";
         let _ = fs::remove_file(db_path);
-        let external_key = "mypassword";
+        let external_key = "mypassword".as_bytes();
 
         // Установка паролю
         set_password(db_path, external_key).unwrap();
 
         // Перевірка, що пароль коректно встановлено
         let conn = Connection::open(db_path).unwrap();
-        let is_correct = is_password_correct(&conn, external_key.as_bytes()).unwrap();
+        let is_correct = is_password_correct(&conn, external_key).unwrap();
         assert!(is_correct, "Password should be correct");
     }
 
@@ -318,7 +335,7 @@ mod tests {
     fn test_set_password_persistence() {
         let db_path = "test_set_password_persistence.db";
         let _ = fs::remove_file(db_path);
-        let external_key = "persistpassword";
+        let external_key = "persistpassword".as_bytes();
 
         // Встановлення пароля
         set_password(db_path, external_key).unwrap();
@@ -326,7 +343,7 @@ mod tests {
         // Закриваємо з'єднання та відкриваємо нове
         let conn = Connection::open(db_path).unwrap();
         assert!(
-            is_password_correct(&conn, external_key.as_bytes()).unwrap(),
+            is_password_correct(&conn, external_key).unwrap(),
             "Password should persist after reopening DB"
         );
     }

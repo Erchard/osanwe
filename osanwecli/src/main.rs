@@ -35,7 +35,7 @@ fn main() {
             if !is_set {
                 println!("Password is not set. Please set a new password:");
                 if let Some(password) = prompt_for_password() {
-                    if let Err(e) = db::set_password(db_path, &password) {
+                    if let Err(e) = db::set_password(db_path, password.as_bytes()) {
                         eprintln!("Error saving password: {:?}", e);
                     } else {
                         println!("Password has been successfully set.");

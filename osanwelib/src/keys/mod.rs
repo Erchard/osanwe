@@ -1,5 +1,7 @@
+use crate::db;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
+use hex::encode;
 use rand::thread_rng;
 
 /// Генерує нову пару ключів Ethereum (приватний і публічний).
@@ -14,6 +16,24 @@ pub fn generate_ethereum_keypair() -> (SigningKey, Address) {
     (signing_key, address)
 }
 
+pub fn generate_save_keypair(
+    db_path: &str,
+    external_key: &[u8],
+) -> Result<Address, Box<dyn std::error::Error>> {
+    // Generate the Ethereum keypair
+    let (signing_key, address) = generate_ethereum_keypair();
+
+    // Convert SigningKey to a hex string
+    let signing_key_hex = encode(signing_key.to_bytes());
+
+    // Convert Address to a string
+    let address_str = format!("{:?}", address); // Alternatively, use address.to_string() if available
+
+    // Save the keypair to the database
+    db::save_keypair(db_path, &signing_key_hex, &address_str, external_key)?;
+
+    Ok(address)
+}
 
 #[cfg(test)]
 mod tests {
@@ -27,7 +47,11 @@ mod tests {
 
         // Переконуємося, що приватний ключ не порожній
         let private_key_bytes = private_key.to_bytes();
-        assert_eq!(private_key_bytes.len(), 32, "Приватний ключ має бути 32 байти");
+        assert_eq!(
+            private_key_bytes.len(),
+            32,
+            "Приватний ключ має бути 32 байти"
+        );
 
         // Отримуємо відкритий ключ у вигляді стисленого SEC1
         let public_key = private_key.verifying_key();
@@ -43,4 +67,5 @@ mod tests {
         // Перевіряємо, що отримана адреса відповідає очікуваній
         assert_eq!(address, derived_address, "Згенерована адреса некоректна");
     }
+
 }
