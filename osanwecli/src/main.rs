@@ -16,16 +16,19 @@ pub fn get_matches() -> clap::ArgMatches {
                 .value_parser(clap::value_parser!(String)),
         )
         .arg(
-            Arg::new("w")
+            Arg::new("wallet")
+                .short('w')
                 .long("wallet")
-                .help("Displays the wallet address stored in the database"),
+                .help("Displays the wallet address stored in the database")
+                .action(clap::ArgAction::SetTrue), // Встановлюємо прапор
         )
         .arg(
-            Arg::new("p")
+            Arg::new("password")
+            .short('p')
                 .long("password")
                 .value_name("PASSWORD")
                 .help("Password for accessing the wallet")
-           //     .value_parser(clap::value_parser!(String)),
+                .value_parser(clap::value_parser!(String)),
         )
         .get_matches()
 }
@@ -60,7 +63,7 @@ fn main() {
         }
     }
 
-    if matches.contains_id("wallet") {
+    if matches.get_flag("wallet") {
         let password = matches
         .get_one::<String>("password")
         .cloned() // Використовуємо cloned(), щоб отримати власну копію
@@ -78,7 +81,7 @@ fn main() {
         if let Some(password) = password {
             match db::is_password_correct(db_path, password.as_bytes()) {
                 Ok(true) => {
-                    match db::is_password_correct(db_path, password.as_bytes()) {
+                    match keys::get_wallet_address(db_path, password.as_bytes()) { // Виклик правильного методу
                         Ok(address) => println!("Wallet Address: {}", address),
                         Err(e) => eprintln!("Error retrieving wallet address: {:?}", e),
                     }
@@ -86,8 +89,6 @@ fn main() {
                 Ok(false) => eprintln!("Incorrect password."),
                 Err(e) => eprintln!("Error checking password: {:?}", e),
             }
-        } else {
-            eprintln!("Password is required to access the wallet.");
         }
     }
 
