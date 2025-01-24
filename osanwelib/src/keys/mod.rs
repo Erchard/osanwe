@@ -49,6 +49,10 @@ pub fn save_keypair(
     Ok(())
 }
 
+pub fn get_wallet_address(db_path: &str, external_key: &[u8]) -> Result<String, rusqlite::Error> {
+    db::get_property_by_key(db_path, WALLET, external_key)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -81,5 +85,4 @@ mod tests {
         // Перевіряємо, що отримана адреса відповідає очікуваній
         assert_eq!(address, derived_address, "Згенерована адреса некоректна");
     }
-
 }
