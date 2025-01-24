@@ -1,0 +1,12 @@
+syntax = "proto3";
+package transactions;
+
+message TransactionType2 {
+  bytes tx_hash = 1;             // 32 байти: Хеш цієї транзакції
+  uint32 tx_type = 2;            // 04 байти: Тип транзакції (2)
+  string currency = 3;           // 06 байтів: Криптовалюта (включно з токенами та блокчейном)
+  bytes amount = 4;              // 32 байти: Сума
+  bytes external_tx_hash = 5;    // 32 байти: Хеш транзакції поповнення в блокчейні
+  uint64 timestamp = 6;          // 08 байтів: Таймстемп з точністю до секунди
+  bytes recipient_address = 7;   // 20 байтів: Адреса отримувача
+}

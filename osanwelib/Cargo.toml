@@ -2,6 +2,7 @@
 name = "osanwelib"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [lib]
 name = "osanwelib"
@@ -18,4 +19,9 @@ sha3 = "0.10"
 log = "0.4"
 env_logger = "0.9"
 rand = "0.8"
+prost = "0.12"
+prost-types = "0.12"
+tonic = { version = "0.12", optional = true }  # Використовується, якщо плануєш gRPC
 
+[build-dependencies]
+prost-build = "0.12"
