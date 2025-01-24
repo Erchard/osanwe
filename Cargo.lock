@@ -2218,6 +2218,7 @@ dependencies = [
  "ethers",
  "hex",
  "log",
+ "rand",
  "rusqlite",
  "sha3",
 ]

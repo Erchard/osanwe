@@ -3,6 +3,7 @@ use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use hex::encode;
 use rand::thread_rng;
+use std::error::Error;
 
 pub const PRIV_KEY: &str = "priv_key";
 pub const WALLET: &str = "wallet";
@@ -19,10 +20,7 @@ pub fn generate_ethereum_keypair() -> (SigningKey, Address) {
     (signing_key, address)
 }
 
-pub fn generate_save_keypair(
-    db_path: &str,
-    external_key: &[u8],
-) -> Result<Address, Box<dyn std::error::Error>> {
+pub fn generate_save_keypair(external_key: &[u8]) -> Result<Address, Box<dyn std::error::Error>> {
     // Generate the Ethereum keypair
     let (signing_key, address) = generate_ethereum_keypair();
 
@@ -33,24 +31,23 @@ pub fn generate_save_keypair(
     let address_str = format!("{:?}", address); // Alternatively, use address.to_string() if available
 
     // Save the keypair to the database
-    save_keypair(db_path, &signing_key_hex, &address_str, external_key)?;
+    save_keypair(&signing_key_hex, &address_str, external_key)?;
 
     Ok(address)
 }
 
 pub fn save_keypair(
-    db_path: &str,
     signing_key: &str,
     address: &str,
     external_key: &[u8],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    db::insert_property(&db_path, PRIV_KEY, signing_key, external_key)?;
-    db::insert_property(&db_path, WALLET, address, external_key)?;
+    db::insert_property(PRIV_KEY, signing_key, external_key)?;
+    db::insert_property(WALLET, address, external_key)?;
     Ok(())
 }
 
-pub fn get_wallet_address(db_path: &str, external_key: &[u8]) -> Result<String, rusqlite::Error> {
-    db::get_property_by_key(db_path, WALLET, external_key)
+pub fn get_wallet_address(external_key: &[u8]) -> Result<String, Box<dyn Error>> {
+    db::get_property_by_key(WALLET, external_key)
 }
 
 #[cfg(test)]

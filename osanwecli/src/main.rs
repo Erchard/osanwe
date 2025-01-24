@@ -8,14 +8,6 @@ pub fn get_matches() -> clap::ArgMatches {
         .author("Arsen Huzhva <arsenguzhva@gmail.com>")
         .about("Sending cryptocurrencies without commission and blockchain")
         .arg(
-            Arg::new("db_path")
-                .short('d')
-                .long("db")
-                .value_name("FILE")
-                .help("Sets a custom database file")
-                .value_parser(clap::value_parser!(String)),
-        )
-        .arg(
             Arg::new("wallet")
                 .short('w')
                 .long("wallet")
@@ -24,7 +16,7 @@ pub fn get_matches() -> clap::ArgMatches {
         )
         .arg(
             Arg::new("password")
-            .short('p')
+                .short('p')
                 .long("password")
                 .value_name("PASSWORD")
                 .help("Password for accessing the wallet")
@@ -36,21 +28,16 @@ pub fn get_matches() -> clap::ArgMatches {
 fn main() {
     let matches = get_matches();
 
-    let db_path = matches
-        .get_one::<String>("db_path")
-        .map(|s| s.as_str())
-        .unwrap_or("osanwe.db");
-
-    if let Err(e) = db::check_and_create_database(db_path) {
+    if let Err(e) = db::check_and_create_database() {
         eprintln!("Error checking or creating database: {:?}", e);
     }
 
-    match db::is_password_set(db_path) {
+    match db::is_password_set() {
         Ok(is_set) => {
             if !is_set {
                 println!("Password is not set. Please set a new password:");
                 if let Some(password) = prompt_for_password() {
-                    if let Err(e) = db::set_password(db_path, password.as_bytes()) {
+                    if let Err(e) = db::set_password(password.as_bytes()) {
                         eprintln!("Error saving password: {:?}", e);
                     } else {
                         println!("Password has been successfully set.");
@@ -65,23 +52,24 @@ fn main() {
 
     if matches.get_flag("wallet") {
         let password = matches
-        .get_one::<String>("password")
-        .cloned() // Використовуємо cloned(), щоб отримати власну копію
-        .or_else(|| {
-            println!("Enter password:");
-            match read_password() {
-                Ok(password) => Some(password), // Повертаємо String
-                Err(e) => {
-                    eprintln!("Error reading password: {:?}", e);
-                    None
+            .get_one::<String>("password")
+            .cloned() // Використовуємо cloned(), щоб отримати власну копію
+            .or_else(|| {
+                println!("Enter password:");
+                match read_password() {
+                    Ok(password) => Some(password), // Повертаємо String
+                    Err(e) => {
+                        eprintln!("Error reading password: {:?}", e);
+                        None
+                    }
                 }
-            }
-        });
+            });
 
         if let Some(password) = password {
-            match db::is_password_correct(db_path, password.as_bytes()) {
+            match db::is_password_correct(password.as_bytes()) {
                 Ok(true) => {
-                    match keys::get_wallet_address(db_path, password.as_bytes()) { // Виклик правильного методу
+                    match keys::get_wallet_address(password.as_bytes()) {
+                        // Виклик правильного методу
                         Ok(address) => println!("Wallet Address: {}", address),
                         Err(e) => eprintln!("Error retrieving wallet address: {:?}", e),
                     }
@@ -92,10 +80,8 @@ fn main() {
         }
     }
 
-
     greet();
 }
-
 
 pub fn prompt_for_password() -> Option<String> {
     loop {
