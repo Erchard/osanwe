@@ -4,6 +4,9 @@ use ethers::prelude::*;
 use hex::encode;
 use rand::thread_rng;
 
+pub const PRIV_KEY: &str = "priv_key";
+pub const WALLET: &str = "wallet";
+
 /// Генерує нову пару ключів Ethereum (приватний і публічний).
 pub fn generate_ethereum_keypair() -> (SigningKey, Address) {
     let signing_key = SigningKey::random(&mut thread_rng()); // Генеруємо випадковий закритий ключ
@@ -30,9 +33,20 @@ pub fn generate_save_keypair(
     let address_str = format!("{:?}", address); // Alternatively, use address.to_string() if available
 
     // Save the keypair to the database
-    db::save_keypair(db_path, &signing_key_hex, &address_str, external_key)?;
+    save_keypair(db_path, &signing_key_hex, &address_str, external_key)?;
 
     Ok(address)
+}
+
+pub fn save_keypair(
+    db_path: &str,
+    signing_key: &str,
+    address: &str,
+    external_key: &[u8],
+) -> Result<(), Box<dyn std::error::Error>> {
+    db::insert_property(&db_path, PRIV_KEY, signing_key, external_key)?;
+    db::insert_property(&db_path, WALLET, address, external_key)?;
+    Ok(())
 }
 
 #[cfg(test)]

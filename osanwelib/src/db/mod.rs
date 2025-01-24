@@ -1,3 +1,4 @@
+use crate::keys;
 use aes::Aes256;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
@@ -5,15 +6,12 @@ use hex::{decode, encode};
 use rusqlite::{Connection, Result};
 use sha3::{Digest, Keccak256};
 use std::fs;
-use crate::keys;
 
 // AES-256 CBC
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 pub const OSANWE_KEY: &str = "osanwe";
 pub const TEST_PHRASE: &str = "interchange of thought";
-pub const PRIV_KEY: &str = "priv_key";
-pub const WALLET: &str = "wallet";
 
 /// Допоміжна функція, що створює cipher (AES-256 CBC) із `external_key`.
 fn create_cipher(external_key: &[u8]) -> Aes256Cbc {
@@ -64,12 +62,8 @@ pub fn create_database(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-pub fn insert_property(
-    conn: &Connection,
-    key: &str,
-    value: &str,
-    external_key: &[u8],
-) -> Result<()> {
+pub fn insert_property(db_path: &str, key: &str, value: &str, external_key: &[u8]) -> Result<()> {
+    let conn = Connection::open(db_path)?;
     // Шифрування значення
     let encrypted_value = encrypt(value.as_bytes(), external_key);
 
@@ -83,7 +77,8 @@ pub fn insert_property(
     Ok(())
 }
 
-pub fn get_property_by_key(conn: &Connection, key: &str, external_key: &[u8]) -> Result<String> {
+pub fn get_property_by_key(db_path: &str, key: &str, external_key: &[u8]) -> Result<String> {
+    let conn = Connection::open(db_path)?;
     // Підготовка запиту для отримання властивості
     let mut stmt = conn.prepare("SELECT property_value FROM properties WHERE property_key = ?1")?;
     let encrypted_value: String = stmt.query_row([key], |row| row.get(0))?;
@@ -101,30 +96,18 @@ pub fn is_password_set(db_path: &str) -> Result<bool> {
     Ok(count > 0)
 }
 
-pub fn is_password_correct(conn: &Connection, external_key: &[u8]) -> Result<bool> {
-    let test_phrase = get_property_by_key(conn, OSANWE_KEY, external_key).unwrap();
+pub fn is_password_correct(db_path: &str, external_key: &[u8]) -> Result<bool> {
+    let test_phrase = get_property_by_key(&db_path, OSANWE_KEY, external_key).unwrap();
     Ok(test_phrase == TEST_PHRASE)
 }
 
-pub fn set_password(db_path: &str, external_key:&[u8]) -> Result<()> {
+pub fn set_password(db_path: &str, external_key: &[u8]) -> Result<()> {
     let conn = Connection::open(db_path)?;
     create_database(&conn)?; // Переконуємося, що таблиця існує
-    insert_property(&conn, OSANWE_KEY, TEST_PHRASE, external_key)?;
+    insert_property(&db_path, OSANWE_KEY, TEST_PHRASE, external_key)?;
     println!("Password has been successfully set.");
-    let address = keys::generate_save_keypair(db_path, external_key);
+    let address = keys::generate_save_keypair(&db_path, external_key);
     println!("Generated Ethereum Address: {:?}", address);
-    Ok(())
-}
-
-pub fn save_keypair(
-    db_path: &str,
-    signing_key: &str,
-    address: &str,
-    external_key: &[u8],
-) -> Result<()> {
-    let conn = Connection::open(db_path)?;
-    insert_property(&conn, PRIV_KEY, signing_key, external_key)?;
-    insert_property(&conn, WALLET, address, external_key)?;
     Ok(())
 }
 
@@ -184,7 +167,7 @@ mod tests {
         let value = "value1";
 
         // Вставка властивості в базу даних
-        let result = insert_property(&conn, key, value, external_key);
+        let result = insert_property(&db_path, key, value, external_key);
         assert!(
             result.is_ok(),
             "Failed to insert property: {:?}",
@@ -249,10 +232,10 @@ mod tests {
         let value = "property_value";
 
         // Вставка властивості в базу даних
-        insert_property(&conn, key, value, external_key).unwrap();
+        insert_property(&db_path, key, value, external_key).unwrap();
 
         // Отримання властивості за ключем
-        let retrieved_value = get_property_by_key(&conn, key, external_key).unwrap();
+        let retrieved_value = get_property_by_key(&db_path, key, external_key).unwrap();
 
         // Перевірка, чи отримане значення відповідає оригінальному
         assert_eq!(retrieved_value, value);
@@ -292,10 +275,10 @@ mod tests {
         let external_key = b"0123456789abcdef";
 
         // 1. Вставляємо правильну фразу (TEST_PHRASE) для ключа OSANWE_KEY
-        insert_property(&conn, OSANWE_KEY, TEST_PHRASE, external_key).unwrap();
+        insert_property(&db_path, OSANWE_KEY, TEST_PHRASE, external_key).unwrap();
 
         // 2. Тепер перевіряємо, чи пароль правильний
-        let result_correct = is_password_correct(&conn, external_key).unwrap();
+        let result_correct = is_password_correct(&db_path, external_key).unwrap();
         assert!(
             result_correct,
             "Expected password to be correct (true), but got false"
@@ -303,10 +286,10 @@ mod tests {
 
         // 3. Оновлюємо існуючий запис, щоб він був неправильним
 
-        insert_property(&conn, OSANWE_KEY, "wrong phrase", external_key).unwrap();
+        insert_property(&db_path, OSANWE_KEY, "wrong phrase", external_key).unwrap();
 
         // 4. Тепер має повертати false
-        let result_incorrect = is_password_correct(&conn, external_key).unwrap();
+        let result_incorrect = is_password_correct(&db_path, external_key).unwrap();
         assert!(
             !result_incorrect,
             "Expected password to be incorrect (false), but got true"
@@ -326,8 +309,7 @@ mod tests {
         set_password(db_path, external_key).unwrap();
 
         // Перевірка, що пароль коректно встановлено
-        let conn = Connection::open(db_path).unwrap();
-        let is_correct = is_password_correct(&conn, external_key).unwrap();
+        let is_correct = is_password_correct(&db_path, external_key).unwrap();
         assert!(is_correct, "Password should be correct");
     }
 
@@ -338,12 +320,11 @@ mod tests {
         let external_key = "persistpassword".as_bytes();
 
         // Встановлення пароля
-        set_password(db_path, external_key).unwrap();
+        set_password(&db_path, external_key).unwrap();
 
         // Закриваємо з'єднання та відкриваємо нове
-        let conn = Connection::open(db_path).unwrap();
         assert!(
-            is_password_correct(&conn, external_key).unwrap(),
+            is_password_correct(&db_path, external_key).unwrap(),
             "Password should persist after reopening DB"
         );
     }
