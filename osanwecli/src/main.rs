@@ -1,5 +1,5 @@
 use clap::{Arg, Command};
-use osanwelib::db;
+use osanwelib::*;
 use rpassword::read_password;
 
 pub fn get_matches() -> clap::ArgMatches {
@@ -14,6 +14,18 @@ pub fn get_matches() -> clap::ArgMatches {
                 .value_name("FILE")
                 .help("Sets a custom database file")
                 .value_parser(clap::value_parser!(String)),
+        )
+        .arg(
+            Arg::new("w")
+                .long("wallet")
+                .help("Displays the wallet address stored in the database"),
+        )
+        .arg(
+            Arg::new("p")
+                .long("password")
+                .value_name("PASSWORD")
+                .help("Password for accessing the wallet")
+           //     .value_parser(clap::value_parser!(String)),
         )
         .get_matches()
 }
@@ -47,6 +59,38 @@ fn main() {
             eprintln!("Error checking the password: {:?}", e);
         }
     }
+
+    if matches.contains_id("wallet") {
+        let password = matches
+        .get_one::<String>("password")
+        .cloned() // Використовуємо cloned(), щоб отримати власну копію
+        .or_else(|| {
+            println!("Enter password:");
+            match read_password() {
+                Ok(password) => Some(password), // Повертаємо String
+                Err(e) => {
+                    eprintln!("Error reading password: {:?}", e);
+                    None
+                }
+            }
+        });
+
+        if let Some(password) = password {
+            match db::is_password_correct(db_path, password.as_bytes()) {
+                Ok(true) => {
+                    match db::is_password_correct(db_path, password.as_bytes()) {
+                        Ok(address) => println!("Wallet Address: {}", address),
+                        Err(e) => eprintln!("Error retrieving wallet address: {:?}", e),
+                    }
+                }
+                Ok(false) => eprintln!("Incorrect password."),
+                Err(e) => eprintln!("Error checking password: {:?}", e),
+            }
+        } else {
+            eprintln!("Password is required to access the wallet.");
+        }
+    }
+
 
     greet();
 }
