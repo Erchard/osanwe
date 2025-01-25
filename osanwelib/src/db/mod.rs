@@ -8,6 +8,7 @@ use rusqlite::{Connection, Result};
 use sha3::{Digest, Keccak256};
 use std::error::Error;
 use std::fs;
+use std::path::PathBuf;
 
 // AES-256 CBC
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
@@ -70,6 +71,9 @@ pub fn check_and_create_database() -> Result<(), Box<dyn std::error::Error>> {
         create_database(&conn)?;
         println!("Database created successfully.");
     }
+
+    create_cryptoassets_table_if_needed()?; // виконає CREATE TABLE / INSERT з файлу, якщо треба
+
     Ok(())
 }
 
@@ -140,39 +144,124 @@ pub fn set_password(external_key: &[u8]) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// Перевіряє, чи існує таблиця CryptoAssets. Якщо ні - зчитує файл SQL та виконує його.
+/// Вважаємо, що у файлі CryptoAssets.sql є CREATE TABLE та INSERT-и.
+pub fn create_cryptoassets_table_if_needed() -> Result<(), Box<dyn Error>> {
+    let conn = Connection::open(DB_PATH)?;
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CryptoAssets';",
+        [],
+        |row| row.get(0),
+    )?;
+
+    // Якщо count == 0 — таблиці ще немає
+    if count == 0 {
+        // Build the absolute path to CryptoAssets.sql using the crate’s root
+        let sql_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("db")
+            .join("CryptoAssets.sql");
+
+        // Optionally check if the file actually exists:
+        if !sql_path.exists() {
+            return Err(format!("SQL file not found at {}", sql_path.display()).into());
+        }
+
+        let sql = fs::read_to_string(sql_path)?;
+        conn.execute_batch(&sql)?;
+        println!("Table 'CryptoAssets' created and data inserted from CryptoAssets.sql");
+    } else {
+        println!("Table 'CryptoAssets' already exists. No action needed.");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
 
-    #[test]
-    fn test_create_database() {
+    /// Допоміжна функція для чистого старту в кожному тесті
+    fn remove_db() {
         let _ = fs::remove_file(DB_PATH);
-        let conn = Connection::open(DB_PATH).unwrap();
-        create_database(&conn).unwrap();
+    }
 
-        // Перевіряємо, що таблиця створена, а не конкретне число записів
-        let exists: i64 = conn
+    #[test]
+    fn test_database_initialization() {
+        // Переконаємось, що файл БД видалений
+        remove_db();
+        // Викликаємо “перевірку і створення БД”
+        check_and_create_database().unwrap();
+
+        // Тепер файл має існувати
+        assert!(fs::metadata(DB_PATH).is_ok(), "DB file was not created");
+
+        // Перевіримо, чи створилася таблиця `properties`
+        let conn = Connection::open(DB_PATH).unwrap();
+        let properties_exists: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='properties'",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='properties';",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
+        assert_eq!(properties_exists, 1, "Table 'properties' not created");
 
-        assert_eq!(exists, 1); // 1 означає, що таблиця створена
+        // Перевіримо, чи створилася таблиця `CryptoAssets` (якщо це потрібно в одному тесті)
+        let crypto_exists: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CryptoAssets';",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(crypto_exists, 1, "Table 'CryptoAssets' not created");
     }
 
     #[test]
-    fn test_check_and_create_database() {
-        let _ = fs::remove_file(DB_PATH);
+    fn test_set_and_check_password() {
+        remove_db();
         check_and_create_database().unwrap();
-        assert!(fs::metadata(DB_PATH).is_ok());
+
+        let external_key = b"testpassword";
+        // Перед встановленням пароля перевіримо, що він не встановлений
+        assert!(!is_password_set().unwrap());
+
+        // Встановлюємо пароль
+        set_password(external_key).unwrap();
+        assert!(
+            is_password_set().unwrap(),
+            "`is_password_set()` should be true after setting password"
+        );
+
+        // Перевіряємо, що він коректний
+        assert!(
+            is_password_correct(external_key).unwrap(),
+            "Password should be correct"
+        );
+
+        // З іншим ключем перевірка має провалитись
+        let wrong_key = b"wrongpassword";
+        assert!(
+            !is_password_correct(wrong_key).unwrap(),
+            "Wrong password should return false"
+        );
+    }
+
+    #[test]
+    fn test_encrypt_decrypt() {
+        let data = b"Hello, world!";
+        let external_key = b"mysecurekey";
+
+        let encrypted = encrypt(data, external_key).expect("Encryption failed");
+        let decrypted = decrypt(&encrypted, external_key).expect("Decryption failed");
+        assert_eq!(decrypted, data, "Decrypted data does not match original");
     }
 
     #[test]
     fn test_insert_and_get_property() {
-        let _ = fs::remove_file(DB_PATH);
+        remove_db();
         check_and_create_database().unwrap();
 
         let external_key = b"mysecurekey";
@@ -182,61 +271,9 @@ mod tests {
         insert_property(key, value, external_key).unwrap();
         let retrieved_value = get_property_by_key(key, external_key).unwrap();
 
-        assert_eq!(retrieved_value, value);
-    }
-
-    #[test]
-    fn test_encrypt_decrypt() -> Result<(), Box<dyn Error>> {
-        let data = b"Hello, world!";
-        let external_key = b"mysecurekey";
-
-        let encrypted = encrypt(data, external_key)?; // Розпаковуємо `Result<String, Box<dyn Error>>`
-        let decrypted = decrypt(&encrypted, external_key)?; // Розпаковуємо `Result<Vec<u8>, Box<dyn Error>>`
-
-        assert_eq!(decrypted, data); // Тепер порівнюємо `Vec<u8>` з `&[u8]`
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_is_password_set() {
-        let _ = fs::remove_file(DB_PATH);
-        check_and_create_database().unwrap();
-        let external_key = b"testpassword";
-
-        // Переконуємося, що пароль НЕ встановлений
-        assert!(!is_password_set().unwrap());
-
-        set_password(external_key).unwrap();
-
-        // Переконуємося, що тепер пароль встановлено
-        assert!(is_password_set().unwrap_or(false));
-    }
-
-    #[test]
-    fn test_is_password_correct() {
-        let _ = fs::remove_file(DB_PATH);
-        check_and_create_database().unwrap();
-        let external_key = b"correctpassword";
-
-        set_password(external_key).unwrap();
-
-        // Перевіряємо, чи пароль коректний
-        assert!(is_password_correct(external_key).unwrap());
-
-        let wrong_key = b"wrongpassword";
-
-        // Переконуємося, що некоректний пароль повертає `false`, а не панікує
-        assert!(!is_password_correct(wrong_key).unwrap());
-    }
-
-    #[test]
-    fn test_set_password() {
-        let _ = fs::remove_file(DB_PATH);
-        check_and_create_database().unwrap();
-        let external_key = b"newpassword";
-
-        set_password(external_key).unwrap();
-        assert!(is_password_correct(external_key).unwrap());
+        assert_eq!(
+            retrieved_value, value,
+            "Retrieved value doesn't match inserted value"
+        );
     }
 }

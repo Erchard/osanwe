@@ -6,3 +6,4 @@ members = [
     "osanwedt",
     "osanwesrv"
 ]
+default-run = "osanwecli" # Оголошуємо default-run у цьому пакеті
