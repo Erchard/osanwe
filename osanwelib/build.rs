@@ -10,7 +10,7 @@ fn main() {
     prost_build::Config::new()
 //        .out_dir(&out_dir)
         .compile_protos(
-            &["proto/transaction_type_1.proto", "proto/transaction_type_2.proto"],
+            &["proto/transaction_pb.proto"],
             &["proto/"],
         )
         .expect("Failed to compile Protobuf files");
