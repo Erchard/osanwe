@@ -263,6 +263,61 @@ pub fn save_transaction(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+
+
+/// Отримує транзакцію з бази даних за її хешем.
+/// 
+/// # Аргументи
+/// 
+/// * `transaction_hash` - Хеш транзакції, яку потрібно знайти.
+/// 
+/// # Повертає
+/// 
+/// * `Ok(TransactionDb)` - Якщо транзакція знайдена та успішно десеріалізована.
+/// * `Err(Box<dyn Error>)` - Якщо сталася помилка під час виконання запиту або десеріалізації.
+/// 
+pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, Box<dyn Error>> {
+    // Відкриваємо з'єднання з базою даних
+    let conn = Connection::open(DB_PATH)?;
+
+    // Підготовлюємо SQL-запит для вибірки транзакції за хешем
+    let mut stmt = conn.prepare(
+        "SELECT 
+            transaction_hash,
+            transaction_type,
+            currency_id,
+            amount,
+            decimal,
+            timestamp,
+            sender_address,
+            sender_output_index,
+            recipient_address,
+            sender_signature,
+            source_transaction_hash
+         FROM transactions 
+         WHERE transaction_hash = ?1",
+    )?;
+
+    // Виконуємо запит і отримуємо результат
+    let tx_db = stmt.query_row(params![transaction_hash], |row| {
+        Ok(TransactionDb {
+            transaction_hash: row.get(0)?,
+            transaction_type: row.get(1)?,
+            currency_id: row.get(2)?,
+            amount: row.get(3)?,
+            decimal: row.get(4)?,
+            timestamp: row.get(5)?,
+            sender_address: row.get(6)?,
+            sender_output_index: row.get(7)?,
+            recipient_address: row.get(8)?,
+            sender_signature: row.get(9)?,
+            source_transaction_hash: row.get(10)?,
+        })
+    })?;
+
+    Ok(tx_db)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -441,4 +496,50 @@ mod tests {
             retrieved_tx.source_transaction_hash
         );
     }
+
+
+    #[test]
+    fn test_get_transaction_by_hash() {
+        // Очищуємо базу даних перед тестом
+        remove_db();
+        check_and_create_database().unwrap();
+
+        // Створюємо зразок транзакції
+        let tx_db = TransactionDb {
+            transaction_hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+            transaction_type: 2,
+            currency_id: 200,
+            amount: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef".to_string(),
+            decimal: "0x02".to_string(),
+            timestamp: 1700000001,
+            sender_address: "0xsenderaddress1234567890abcdef".to_string(),
+            sender_output_index: 100,
+            recipient_address: "0xrecipientaddressabcdef123456".to_string(),
+            sender_signature: "0xsendersignatureabcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+            source_transaction_hash: "0xsourcehashabcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+        };
+
+        // Зберігаємо транзакцію
+        save_transaction(&tx_db).unwrap();
+
+        // Отримуємо транзакцію за хешем
+        let retrieved_tx = get_transaction_by_hash(&tx_db.transaction_hash).unwrap();
+
+        // Перевіряємо, чи збігаються дані
+        assert_eq!(tx_db.transaction_hash, retrieved_tx.transaction_hash);
+        assert_eq!(tx_db.transaction_type, retrieved_tx.transaction_type);
+        assert_eq!(tx_db.currency_id, retrieved_tx.currency_id);
+        assert_eq!(tx_db.amount, retrieved_tx.amount);
+        assert_eq!(tx_db.decimal, retrieved_tx.decimal);
+        assert_eq!(tx_db.timestamp, retrieved_tx.timestamp);
+        assert_eq!(tx_db.sender_address, retrieved_tx.sender_address);
+        assert_eq!(tx_db.sender_output_index, retrieved_tx.sender_output_index);
+        assert_eq!(tx_db.recipient_address, retrieved_tx.recipient_address);
+        assert_eq!(tx_db.sender_signature, retrieved_tx.sender_signature);
+        assert_eq!(
+            tx_db.source_transaction_hash,
+            retrieved_tx.source_transaction_hash
+        );
+    }
+
 }
