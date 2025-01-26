@@ -1,10 +1,11 @@
 use crate::keys;
+use crate::tx::TransactionDb;
 use aes::Aes256;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use hex::{decode, encode};
 use rand::Rng; // Для генерації випадкового IV
-use rusqlite::{Connection, Result};
+use rusqlite::{params, Connection, Result as SqlResult};
 use sha3::{Digest, Keccak256};
 use std::error::Error;
 use std::fs;
@@ -112,14 +113,14 @@ pub fn get_property_by_key(key: &str, external_key: &[u8]) -> Result<String, Box
     Ok(decrypted_value)
 }
 
-pub fn is_password_set() -> Result<bool> {
+pub fn is_password_set() -> SqlResult<bool> {
     let conn = Connection::open(DB_PATH)?;
     let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")?;
     let count: i64 = stmt.query_row([OSANWE_KEY], |row| row.get(0))?;
     Ok(count > 0)
 }
 
-pub fn is_password_correct(external_key: &[u8]) -> Result<bool> {
+pub fn is_password_correct(external_key: &[u8]) -> SqlResult<bool> {
     match get_property_by_key(OSANWE_KEY, external_key) {
         Ok(test_phrase) => Ok(test_phrase == TEST_PHRASE),
         Err(e) => {
@@ -173,6 +174,91 @@ pub fn create_cryptoassets_table_if_needed() -> Result<(), Box<dyn Error>> {
     } else {
         println!("Table 'CryptoAssets' already exists. No action needed.");
     }
+
+    Ok(())
+}
+
+/// Ensures that the 'transactions' table exists in the database.
+/// If it does not exist, it creates the table by executing the SQL in 'transactions.sql'.
+fn ensure_transactions_table_exists() -> Result<(), Box<dyn Error>> {
+    let conn = Connection::open(DB_PATH)?;
+
+    // Check if the 'transactions' table exists
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='transactions';",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if count == 0 {
+        // Path to the 'transactions.sql' file
+        let sql_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("db")
+            .join("transactions.sql");
+
+        // Verify that the SQL file exists
+        if !sql_path.exists() {
+            return Err(format!(
+                "SQL file for creating 'transactions' table not found at {}",
+                sql_path.display()
+            )
+            .into());
+        }
+
+        // Read and execute the SQL statements from 'transactions.sql'
+        let sql = fs::read_to_string(sql_path)?;
+        conn.execute_batch(&sql)?;
+        println!("Table 'transactions' created successfully.");
+    } else {
+        println!("Table 'transactions' already exists. No action needed.");
+    }
+
+    Ok(())
+}
+
+/// Saves a `TransactionDb` record into the 'transactions' table.
+/// Ensures the table exists before attempting to insert.
+pub fn save_transaction(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
+    // Ensure the 'transactions' table exists
+    ensure_transactions_table_exists()?;
+
+    // Open a connection to the database
+    let conn = Connection::open(DB_PATH)?;
+
+    // Prepare the SQL statement for insertion
+    let mut stmt = conn.prepare(
+        "INSERT INTO transactions (
+            transaction_hash,
+            transaction_type,
+            currency_id,
+            amount,
+            decimal,
+            timestamp,
+            sender_address,
+            sender_output_index,
+            recipient_address,
+            sender_signature,
+            source_transaction_hash
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+    )?;
+
+    // Execute the insertion with the provided `TransactionDb` data
+    stmt.execute(params![
+        tx_db.transaction_hash,
+        tx_db.transaction_type,
+        tx_db.currency_id,
+        tx_db.amount,
+        tx_db.decimal,
+        tx_db.timestamp as i64, // Ensure correct type for INTEGER
+        tx_db.sender_address,
+        tx_db.sender_output_index as i64, // Ensure correct type for INTEGER
+        tx_db.recipient_address,
+        tx_db.sender_signature,
+        tx_db.source_transaction_hash,
+    ])?;
+
+    println!("Transaction saved successfully.");
 
     Ok(())
 }
@@ -274,6 +360,85 @@ mod tests {
         assert_eq!(
             retrieved_value, value,
             "Retrieved value doesn't match inserted value"
+        );
+    }
+
+    #[test]
+    fn test_save_transaction() {
+        // Clean up any existing database
+        remove_db();
+
+        // Initialize the database (creates tables)
+        check_and_create_database().unwrap();
+
+        // Create a sample TransactionDb
+        let tx_db = TransactionDb {
+            transaction_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            transaction_type: 1,
+            currency_id: 100,
+            amount: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+            decimal: "0x01".to_string(),
+            timestamp: 1700000000,
+            sender_address: "0xcccccccccccccccccccccccccccccccccccccccc".to_string(),
+            sender_output_index: 99,
+            recipient_address: "0xdddddddddddddddddddddddddddddddddddddddd".to_string(),
+            sender_signature: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".to_string(),
+            source_transaction_hash: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string(),
+        };
+
+        // Save the transaction
+        save_transaction(&tx_db).unwrap();
+
+        // Verify that the transaction was inserted
+        let conn = Connection::open(DB_PATH).unwrap();
+        let retrieved_tx: TransactionDb = conn
+            .query_row(
+                "SELECT 
+                transaction_hash,
+                transaction_type,
+                currency_id,
+                amount,
+                decimal,
+                timestamp,
+                sender_address,
+                sender_output_index,
+                recipient_address,
+                sender_signature,
+                source_transaction_hash
+            FROM transactions WHERE transaction_hash = ?1",
+                params![tx_db.transaction_hash],
+                |row| {
+                    Ok(TransactionDb {
+                        transaction_hash: row.get(0)?,
+                        transaction_type: row.get(1)?,
+                        currency_id: row.get(2)?,
+                        amount: row.get(3)?,
+                        decimal: row.get(4)?,
+                        timestamp: row.get(5)?,
+                        sender_address: row.get(6)?,
+                        sender_output_index: row.get(7)?,
+                        recipient_address: row.get(8)?,
+                        sender_signature: row.get(9)?,
+                        source_transaction_hash: row.get(10)?,
+                    })
+                },
+            )
+            .unwrap();
+
+        // Assert that the retrieved transaction matches the original
+        assert_eq!(tx_db.transaction_hash, retrieved_tx.transaction_hash);
+        assert_eq!(tx_db.transaction_type, retrieved_tx.transaction_type);
+        assert_eq!(tx_db.currency_id, retrieved_tx.currency_id);
+        assert_eq!(tx_db.amount, retrieved_tx.amount);
+        assert_eq!(tx_db.decimal, retrieved_tx.decimal);
+        assert_eq!(tx_db.timestamp, retrieved_tx.timestamp);
+        assert_eq!(tx_db.sender_address, retrieved_tx.sender_address);
+        assert_eq!(tx_db.sender_output_index, retrieved_tx.sender_output_index);
+        assert_eq!(tx_db.recipient_address, retrieved_tx.recipient_address);
+        assert_eq!(tx_db.sender_signature, retrieved_tx.sender_signature);
+        assert_eq!(
+            tx_db.source_transaction_hash,
+            retrieved_tx.source_transaction_hash
         );
     }
 }
