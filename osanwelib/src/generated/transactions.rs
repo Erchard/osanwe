@@ -11,12 +11,9 @@ pub struct TransactionPb {
     /// 4 байти: Криптовалюта (номер зі довідника)
     #[prost(uint32, tag = "3")]
     pub currency_id: u32,
-    /// 256 байтів: Сума
+    /// 32 байта: Сума по алгоритму Ethereum
     #[prost(bytes = "vec", tag = "4")]
     pub amount: ::prost::alloc::vec::Vec<u8>,
-    /// 1 байт: Кількість знаків після десяткової точки
-    #[prost(bytes = "vec", tag = "5")]
-    pub decimal: ::prost::alloc::vec::Vec<u8>,
     /// 8 байтів: Таймстемп з точністю до секунди
     #[prost(uint64, tag = "6")]
     pub timestamp: u64,

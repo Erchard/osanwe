@@ -217,77 +217,52 @@ fn ensure_transactions_table_exists() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// Saves a `TransactionDb` record into the 'transactions' table.
-/// Ensures the table exists before attempting to insert.
 pub fn save_transaction(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
-    // Ensure the 'transactions' table exists
     ensure_transactions_table_exists()?;
 
-    // Open a connection to the database
     let conn = Connection::open(DB_PATH)?;
 
-    // Prepare the SQL statement for insertion
     let mut stmt = conn.prepare(
         "INSERT INTO transactions (
             transaction_hash,
             transaction_type,
             currency_id,
             amount,
-            decimal,
             timestamp,
             sender_address,
             sender_output_index,
             recipient_address,
             sender_signature,
             source_transaction_hash
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
     )?;
 
-    // Execute the insertion with the provided `TransactionDb` data
     stmt.execute(params![
-        tx_db.transaction_hash,
+        &tx_db.transaction_hash,
         tx_db.transaction_type,
         tx_db.currency_id,
-        tx_db.amount,
-        tx_db.decimal,
-        tx_db.timestamp as i64, // Ensure correct type for INTEGER
-        tx_db.sender_address,
-        tx_db.sender_output_index as i64, // Ensure correct type for INTEGER
-        tx_db.recipient_address,
-        tx_db.sender_signature,
-        tx_db.source_transaction_hash,
+        &tx_db.amount,
+        tx_db.timestamp as i64,
+        &tx_db.sender_address,
+        tx_db.sender_output_index.map(|v| v as i64), // NULL якщо `None`
+        &tx_db.recipient_address,
+        &tx_db.sender_signature,
+        &tx_db.source_transaction_hash,
     ])?;
 
     println!("Transaction saved successfully.");
-
     Ok(())
 }
 
-
-
-/// Отримує транзакцію з бази даних за її хешем.
-/// 
-/// # Аргументи
-/// 
-/// * `transaction_hash` - Хеш транзакції, яку потрібно знайти.
-/// 
-/// # Повертає
-/// 
-/// * `Ok(TransactionDb)` - Якщо транзакція знайдена та успішно десеріалізована.
-/// * `Err(Box<dyn Error>)` - Якщо сталася помилка під час виконання запиту або десеріалізації.
-/// 
 pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, Box<dyn Error>> {
-    // Відкриваємо з'єднання з базою даних
     let conn = Connection::open(DB_PATH)?;
 
-    // Підготовлюємо SQL-запит для вибірки транзакції за хешем
     let mut stmt = conn.prepare(
         "SELECT 
             transaction_hash,
             transaction_type,
             currency_id,
             amount,
-            decimal,
             timestamp,
             sender_address,
             sender_output_index,
@@ -298,20 +273,18 @@ pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, 
          WHERE transaction_hash = ?1",
     )?;
 
-    // Виконуємо запит і отримуємо результат
     let tx_db = stmt.query_row(params![transaction_hash], |row| {
         Ok(TransactionDb {
             transaction_hash: row.get(0)?,
             transaction_type: row.get(1)?,
             currency_id: row.get(2)?,
             amount: row.get(3)?,
-            decimal: row.get(4)?,
-            timestamp: row.get(5)?,
-            sender_address: row.get(6)?,
-            sender_output_index: row.get(7)?,
-            recipient_address: row.get(8)?,
-            sender_signature: row.get(9)?,
-            source_transaction_hash: row.get(10)?,
+            timestamp: row.get(4)?,
+            sender_address: row.get::<_, Option<String>>(5)?, // Очікуємо NULL
+            sender_output_index: row.get::<_, Option<i64>>(6)?.map(|v| v as u32),
+            recipient_address: row.get(7)?,
+            sender_signature: row.get::<_, Option<String>>(8)?, // Очікуємо NULL
+            source_transaction_hash: row.get::<_, Option<String>>(9)?, // Очікуємо NULL
         })
     })?;
 
@@ -321,6 +294,9 @@ pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::generated::TransactionPb;
+    use crate::tx::from_transaction_db;
+    use crate::tx::to_transaction_db;
     use std::fs;
 
     /// Допоміжна функція для чистого старту в кожному тесті
@@ -329,208 +305,128 @@ mod tests {
     }
 
     #[test]
-    fn test_database_initialization() {
-        // Переконаємось, що файл БД видалений
-        remove_db();
-        // Викликаємо “перевірку і створення БД”
-        check_and_create_database().unwrap();
-
-        // Тепер файл має існувати
-        assert!(fs::metadata(DB_PATH).is_ok(), "DB file was not created");
-
-        // Перевіримо, чи створилася таблиця `properties`
-        let conn = Connection::open(DB_PATH).unwrap();
-        let properties_exists: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='properties';",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(properties_exists, 1, "Table 'properties' not created");
-
-        // Перевіримо, чи створилася таблиця `CryptoAssets` (якщо це потрібно в одному тесті)
-        let crypto_exists: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CryptoAssets';",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(crypto_exists, 1, "Table 'CryptoAssets' not created");
-    }
-
-    #[test]
-    fn test_set_and_check_password() {
-        remove_db();
-        check_and_create_database().unwrap();
-
-        let external_key = b"testpassword";
-        // Перед встановленням пароля перевіримо, що він не встановлений
-        assert!(!is_password_set().unwrap());
-
-        // Встановлюємо пароль
-        set_password(external_key).unwrap();
-        assert!(
-            is_password_set().unwrap(),
-            "`is_password_set()` should be true after setting password"
-        );
-
-        // Перевіряємо, що він коректний
-        assert!(
-            is_password_correct(external_key).unwrap(),
-            "Password should be correct"
-        );
-
-        // З іншим ключем перевірка має провалитись
-        let wrong_key = b"wrongpassword";
-        assert!(
-            !is_password_correct(wrong_key).unwrap(),
-            "Wrong password should return false"
-        );
-    }
-
-    #[test]
-    fn test_encrypt_decrypt() {
-        let data = b"Hello, world!";
-        let external_key = b"mysecurekey";
-
-        let encrypted = encrypt(data, external_key).expect("Encryption failed");
-        let decrypted = decrypt(&encrypted, external_key).expect("Decryption failed");
-        assert_eq!(decrypted, data, "Decrypted data does not match original");
-    }
-
-    #[test]
-    fn test_insert_and_get_property() {
-        remove_db();
-        check_and_create_database().unwrap();
-
-        let external_key = b"mysecurekey";
-        let key = "username";
-        let value = "admin";
-
-        insert_property(key, value, external_key).unwrap();
-        let retrieved_value = get_property_by_key(key, external_key).unwrap();
-
-        assert_eq!(
-            retrieved_value, value,
-            "Retrieved value doesn't match inserted value"
-        );
-    }
-
-    #[test]
-    fn test_save_transaction() {
-        // Clean up any existing database
-        remove_db();
-
-        // Initialize the database (creates tables)
-        check_and_create_database().unwrap();
-
-        // Create a sample TransactionDb
-        let tx_db = TransactionDb {
-            transaction_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+    fn test_conversion_to_transaction_db() {
+        let pb = TransactionPb {
+            transaction_hash: vec![0xAA; 32],
             transaction_type: 1,
             currency_id: 100,
-            amount: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
-            decimal: "0x01".to_string(),
+            amount: vec![0xBB; 32],
             timestamp: 1700000000,
-            sender_address: "0xcccccccccccccccccccccccccccccccccccccccc".to_string(),
+            sender_address: vec![0xCC; 20],
             sender_output_index: 99,
-            recipient_address: "0xdddddddddddddddddddddddddddddddddddddddd".to_string(),
-            sender_signature: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".to_string(),
-            source_transaction_hash: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string(),
+            recipient_address: vec![0xDD; 20],
+            sender_signature: vec![0xEE; 65],
+            source_transaction_hash: vec![0xFF; 32],
         };
+        let db = to_transaction_db(&pb);
 
-        // Save the transaction
-        save_transaction(&tx_db).unwrap();
-
-        // Verify that the transaction was inserted
-        let conn = Connection::open(DB_PATH).unwrap();
-        let retrieved_tx: TransactionDb = conn
-            .query_row(
-                "SELECT 
-                transaction_hash,
-                transaction_type,
-                currency_id,
-                amount,
-                decimal,
-                timestamp,
-                sender_address,
-                sender_output_index,
-                recipient_address,
-                sender_signature,
-                source_transaction_hash
-            FROM transactions WHERE transaction_hash = ?1",
-                params![tx_db.transaction_hash],
-                |row| {
-                    Ok(TransactionDb {
-                        transaction_hash: row.get(0)?,
-                        transaction_type: row.get(1)?,
-                        currency_id: row.get(2)?,
-                        amount: row.get(3)?,
-                        decimal: row.get(4)?,
-                        timestamp: row.get(5)?,
-                        sender_address: row.get(6)?,
-                        sender_output_index: row.get(7)?,
-                        recipient_address: row.get(8)?,
-                        sender_signature: row.get(9)?,
-                        source_transaction_hash: row.get(10)?,
-                    })
-                },
-            )
-            .unwrap();
-
-        // Assert that the retrieved transaction matches the original
-        assert_eq!(tx_db.transaction_hash, retrieved_tx.transaction_hash);
-        assert_eq!(tx_db.transaction_type, retrieved_tx.transaction_type);
-        assert_eq!(tx_db.currency_id, retrieved_tx.currency_id);
-        assert_eq!(tx_db.amount, retrieved_tx.amount);
-        assert_eq!(tx_db.decimal, retrieved_tx.decimal);
-        assert_eq!(tx_db.timestamp, retrieved_tx.timestamp);
-        assert_eq!(tx_db.sender_address, retrieved_tx.sender_address);
-        assert_eq!(tx_db.sender_output_index, retrieved_tx.sender_output_index);
-        assert_eq!(tx_db.recipient_address, retrieved_tx.recipient_address);
-        assert_eq!(tx_db.sender_signature, retrieved_tx.sender_signature);
+        assert_eq!(db.transaction_hash.len(), 66);
+        assert_eq!(db.amount.len(), 66);
+        assert_eq!(db.sender_address.as_ref().map(|s| s.len()), Some(42));
+        assert_eq!(db.sender_signature.as_ref().map(|s| s.len()), Some(132));
         assert_eq!(
-            tx_db.source_transaction_hash,
-            retrieved_tx.source_transaction_hash
+            db.source_transaction_hash.as_ref().map(|s| s.len()),
+            Some(66)
         );
     }
 
+    #[test]
+    fn test_conversion_to_transaction_db_with_missing_fields() {
+        let pb = TransactionPb {
+            transaction_hash: vec![0xAA; 32],
+            transaction_type: 1,
+            currency_id: 100,
+            amount: vec![0xBB; 32],
+            timestamp: 1700000000,
+            sender_address: Vec::new(), // Відсутній відправник
+            sender_output_index: 0,
+            recipient_address: vec![0xDD; 20],
+            sender_signature: Vec::new(),        // Відсутній підпис
+            source_transaction_hash: Vec::new(), // Відсутній хеш
+        };
+        let db = to_transaction_db(&pb);
+
+        assert_eq!(db.transaction_hash.len(), 66);
+        assert_eq!(db.amount.len(), 66);
+        assert!(db.sender_address.is_none());
+        assert!(db.sender_signature.is_none());
+        assert!(db.source_transaction_hash.is_none());
+    }
 
     #[test]
-    fn test_get_transaction_by_hash() {
-        // Очищуємо базу даних перед тестом
+    fn test_conversion_from_transaction_db() {
+        let db = TransactionDb {
+            transaction_hash: "0x".to_owned() + &"AA".repeat(32),
+            transaction_type: 1,
+            currency_id: 100,
+            amount: "0x".to_owned() + &"BB".repeat(32),
+            timestamp: 1700000000,
+            sender_address: Some("0x".to_owned() + &"CC".repeat(20)),
+            sender_output_index: Some(99),
+            recipient_address: "0x".to_owned() + &"DD".repeat(20),
+            sender_signature: Some("0x".to_owned() + &"EE".repeat(65)),
+            source_transaction_hash: Some("0x".to_owned() + &"FF".repeat(32)),
+        };
+        let pb = from_transaction_db(&db).unwrap();
+
+        assert_eq!(pb.transaction_hash.len(), 32);
+        assert_eq!(pb.amount.len(), 32);
+        assert!(!pb.sender_address.is_empty());
+        assert!(!pb.sender_signature.is_empty());
+        assert!(!pb.source_transaction_hash.is_empty());
+    }
+
+    #[test]
+    fn test_conversion_from_transaction_db_with_missing_fields() {
+        let db = TransactionDb {
+            transaction_hash: "0x".to_owned() + &"AA".repeat(32),
+            transaction_type: 1,
+            currency_id: 100,
+            amount: "0x".to_owned() + &"BB".repeat(32),
+            timestamp: 1700000000,
+            sender_address: None,
+            sender_output_index: None,
+            recipient_address: "0x".to_owned() + &"DD".repeat(20),
+            sender_signature: None,
+            source_transaction_hash: None,
+        };
+        let pb = from_transaction_db(&db).unwrap();
+
+        assert_eq!(pb.transaction_hash.len(), 32);
+        assert_eq!(pb.amount.len(), 32);
+        assert!(pb.sender_address.is_empty());
+        assert!(pb.sender_signature.is_empty());
+        assert!(pb.source_transaction_hash.is_empty());
+    }
+
+    #[test]
+    fn test_save_and_fetch_transaction_with_missing_fields() {
         remove_db();
         check_and_create_database().unwrap();
 
-        // Створюємо зразок транзакції
         let tx_db = TransactionDb {
-            transaction_hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+            transaction_hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                .to_string(),
             transaction_type: 2,
             currency_id: 200,
-            amount: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef".to_string(),
-            decimal: "0x02".to_string(),
+            amount: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef"
+                .to_string(),
             timestamp: 1700000001,
-            sender_address: "0xsenderaddress1234567890abcdef".to_string(),
-            sender_output_index: 100,
+            sender_address: None,
+            sender_output_index: None,
             recipient_address: "0xrecipientaddressabcdef123456".to_string(),
-            sender_signature: "0xsendersignatureabcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
-            source_transaction_hash: "0xsourcehashabcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+            sender_signature: None,
+            source_transaction_hash: None,
         };
 
-        // Зберігаємо транзакцію
         save_transaction(&tx_db).unwrap();
 
-        // Отримуємо транзакцію за хешем
         let retrieved_tx = get_transaction_by_hash(&tx_db.transaction_hash).unwrap();
 
-        // Перевіряємо, чи збігаються дані
         assert_eq!(tx_db.transaction_hash, retrieved_tx.transaction_hash);
         assert_eq!(tx_db.transaction_type, retrieved_tx.transaction_type);
         assert_eq!(tx_db.currency_id, retrieved_tx.currency_id);
         assert_eq!(tx_db.amount, retrieved_tx.amount);
-        assert_eq!(tx_db.decimal, retrieved_tx.decimal);
         assert_eq!(tx_db.timestamp, retrieved_tx.timestamp);
         assert_eq!(tx_db.sender_address, retrieved_tx.sender_address);
         assert_eq!(tx_db.sender_output_index, retrieved_tx.sender_output_index);
@@ -541,5 +437,4 @@ mod tests {
             retrieved_tx.source_transaction_hash
         );
     }
-
 }

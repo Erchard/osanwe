@@ -31,29 +31,29 @@ INSERT INTO "CryptoAssets" (id, net_type, chain_code, token_id, symbol, descript
 
 -- 1.3 Polygon mainnet (chain_code = 3)
 (16973824, 1, 3, 0, 'MATIC','Polygon'),
-(16973825, 1, 3, 1, 'USDT', 'USDT на Polygon'),
-(16973826, 1, 3, 2, 'USDC', 'USDC на Polygon'),
-(16973827, 1, 3, 3, 'DAI',  'DAI на Polygon'),
+(16973825, 1, 3, 1, 'USDT', 'USDT for Polygon'),
+(16973826, 1, 3, 2, 'USDC', 'USDC for Polygon'),
+(16973827, 1, 3, 3, 'DAI',  'DAI for Polygon'),
 
 -- 1.4 Avalanche C-Chain (chain_code = 4)
 (17039360, 1, 4, 0, 'AVAX', 'Avalanche C-Chain'),
-(17039361, 1, 4, 1, 'USDT', 'USDT на Avalanche'),
-(17039362, 1, 4, 2, 'USDC', 'USDC на Avalanche'),
+(17039361, 1, 4, 1, 'USDT', 'USDT for Avalanche'),
+(17039362, 1, 4, 2, 'USDC', 'USDC for Avalanche'),
 
 -- 1.5 Arbitrum One (chain_code = 5)
-(17104896, 1, 5, 0, 'ETH',  'Bridged ETH на Arbitrum'),
-(17104897, 1, 5, 1, 'USDT', 'USDT на Arbitrum'),
-(17104898, 1, 5, 2, 'USDC', 'USDC на Arbitrum'),
+(17104896, 1, 5, 0, 'ETH',  'Bridged ETH for Arbitrum'),
+(17104897, 1, 5, 1, 'USDT', 'USDT for Arbitrum'),
+(17104898, 1, 5, 2, 'USDC', 'USDC for Arbitrum'),
 
 -- 1.6 Optimism (chain_code = 6)
-(17170432, 1, 6, 0, 'ETH',  'Bridged ETH на Optimism'),
-(17170433, 1, 6, 1, 'USDT', 'USDT на Optimism'),
-(17170434, 1, 6, 2, 'USDC', 'USDC на Optimism'),
+(17170432, 1, 6, 0, 'ETH',  'Bridged ETH for Optimism'),
+(17170433, 1, 6, 1, 'USDT', 'USDT for Optimism'),
+(17170434, 1, 6, 2, 'USDC', 'USDC for Optimism'),
 
 -- 1.7 Fantom (chain_code = 7)
 (17235968, 1, 7, 0, 'FTM',  'Fantom mainnet token'),
-(17235969, 1, 7, 1, 'USDT','USDT на Fantom'),
-(17235970, 1, 7, 2, 'USDC','USDC на Fantom'),
+(17235969, 1, 7, 1, 'USDT','USDT for Fantom'),
+(17235970, 1, 7, 2, 'USDC','USDC for Fantom'),
 
 -- (Приклад додаткових EVM mainnets)
 (17301504, 1, 8, 0, 'CRO', 'Cronos mainnet'),
@@ -100,5 +100,4 @@ INSERT INTO "CryptoAssets" (id, net_type, chain_code, token_id, symbol, descript
 (67174400, 4, 2, 0, 'TRX', 'Tron Shasta testnet'),
 (67239936, 4, 3, 0, 'SOL', 'Solana devnet/testnet');
 
--- Після виконання: перевірте, що записи з'явилися
 -- SELECT * FROM "CryptoAssets";
