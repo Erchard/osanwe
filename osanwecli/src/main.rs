@@ -29,6 +29,14 @@ pub fn get_matches() -> clap::ArgMatches {
                 .help("List all cryptocurrencies in the database")
                 .action(clap::ArgAction::SetTrue),
         )
+        // Новий прапорець --send, очікуємо три аргументи:
+        .arg(
+            Arg::new("send")
+                .long("send")
+                .num_args(3) // Кількість обов'язкових аргументів
+                .value_names(["AMOUNT", "CURRENCY_ID", "RECIPIENT"])
+                .help("Send tokens to the recipient. Example: --send 345.5 16842752 0x..."),
+        )
         .get_matches()
 }
 
@@ -98,6 +106,68 @@ fn main() {
                 }
             }
             Err(e) => eprintln!("Error retrieving crypto assets: {:?}", e),
+        }
+    }
+
+    // ------------------
+    // 3) Логіка для --send amount currency_id recipient
+    // ------------------
+    if let Some(values) = matches.get_many::<String>("send") {
+        // Перетворюємо ValuesRef у вектор
+        let values: Vec<&String> = values.collect();
+
+        // Переконуємося, що у нас є рівно три аргументи
+        if values.len() != 3 {
+            eprintln!("--send requires exactly 3 arguments: AMOUNT CURRENCY_ID RECIPIENT");
+            return;
+        }
+
+        let amount_str = &values[0];
+        let currency_id_str = &values[1];
+        let recipient = &values[2];
+
+        // Отримання пароля
+        let password = matches
+            .get_one::<String>("password")
+            .cloned()
+            .or_else(|| {
+                println!("Enter password:");
+                match read_password() {
+                    Ok(password) => Some(password),
+                    Err(e) => {
+                        eprintln!("Error reading password: {:?}", e);
+                        None
+                    }
+                }
+            });
+
+        if let Some(password) = password {
+            // Перевірка пароля
+            match db::is_password_correct(password.as_bytes()) {
+                Ok(true) => {
+                    // Спробуємо конвертувати currency_id_str у u32
+                    let currency_id: u32 = match currency_id_str.parse() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!(
+                                "Invalid currency_id: '{}'. Must be a valid u32.",
+                                currency_id_str
+                            );
+                            return;
+                        }
+                    };
+
+                    // Зберігаємо сума як текст, а currency_id як u32
+                    println!("Send request received:");
+                    println!("  Amount (string): {}", amount_str);
+                    println!("  Currency ID (u32): {}", currency_id);
+                    println!("  Recipient: {}", recipient);
+
+                    // Тут можна додати логіку збереження транзакції в базу даних
+                }
+                Ok(false) => eprintln!("Incorrect password."),
+                Err(e) => eprintln!("Error checking password: {:?}", e),
+            }
         }
     }
 
