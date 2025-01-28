@@ -17,6 +17,16 @@ pub const DB_PATH: &str = "osanwe.db";
 pub const OSANWE_KEY: &str = "osanwe";
 pub const TEST_PHRASE: &str = "interchange of thought";
 
+#[derive(Debug)]
+pub struct CryptoAsset {
+    pub id: i32,
+    pub net_type: i32,
+    pub chain_code: i32,
+    pub token_id: i32,
+    pub symbol: String,
+    pub description: Option<String>,
+}
+
 fn create_cipher(external_key: &[u8], iv: Option<&[u8]>) -> (Aes256Cbc, Vec<u8>) {
     let mut hasher = Keccak256::new();
     hasher.update(external_key);
@@ -87,6 +97,42 @@ pub fn create_database(conn: &Connection) -> rusqlite::Result<()> {
         [],
     )?;
     Ok(())
+}
+
+pub fn get_all_cryptoassets() -> Result<Vec<CryptoAsset>, Box<dyn Error>> {
+    let conn = Connection::open(DB_PATH)?;
+
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT 
+            id,
+            net_type,
+            chain_code,
+            token_id,
+            symbol,
+            description
+        FROM CryptoAssets
+        ORDER BY symbol ASC, id ASC
+        "#,
+    )?;
+
+    let assets_iter = stmt.query_map([], |row| {
+        Ok(CryptoAsset {
+            id: row.get(0)?,
+            net_type: row.get(1)?,
+            chain_code: row.get(2)?,
+            token_id: row.get(3)?,
+            symbol: row.get(4)?,
+            description: row.get(5)?,
+        })
+    })?;
+
+    let mut assets = Vec::new();
+    for asset_res in assets_iter {
+        assets.push(asset_res?);
+    }
+
+    Ok(assets)
 }
 
 pub fn insert_property(key: &str, value: &str, external_key: &[u8]) -> Result<(), Box<dyn Error>> {
@@ -436,5 +482,24 @@ mod tests {
             tx_db.source_transaction_hash,
             retrieved_tx.source_transaction_hash
         );
+    }
+
+    #[test]
+    fn test_get_all_cryptoassets() {
+        // Видаляємо, щоб почати з чистої бази
+        remove_db();
+
+        // Створюємо базу і таблицю
+        check_and_create_database().unwrap();
+
+        // Викликаємо функцію, яка повертає всі активи
+        let assets = get_all_cryptoassets().expect("Failed to fetch assets");
+
+        // Переконуємося, що список не порожній
+        assert!(!assets.is_empty(), "Assets list should not be empty");
+
+        // Наприклад, перевіримо, що там є щонайменше один запис із символом ETH
+        let contains_eth = assets.iter().any(|a| a.symbol == "ETH");
+        assert!(contains_eth, "There must be an ETH entry in the list");
     }
 }

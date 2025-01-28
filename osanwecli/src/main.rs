@@ -22,6 +22,13 @@ pub fn get_matches() -> clap::ArgMatches {
                 .help("Password for accessing the wallet")
                 .value_parser(clap::value_parser!(String)),
         )
+        .arg(
+            Arg::new("list-assets")
+                .short('l')
+                .long("list-assets")
+                .help("List all cryptocurrencies in the database")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches()
 }
 
@@ -77,6 +84,20 @@ fn main() {
                 Ok(false) => eprintln!("Incorrect password."),
                 Err(e) => eprintln!("Error checking password: {:?}", e),
             }
+        }
+    }
+
+    // Якщо користувач вказав --list-assets, виводимо список
+    if matches.get_flag("list-assets") {
+        match db::get_all_cryptoassets() {
+            Ok(assets) => {
+                for asset in assets {
+                    // Якщо description може бути NULL, краще підставити пустий рядок
+                    let desc = asset.description.unwrap_or_default();
+                    println!("{}\t{}\t{}", asset.id, asset.symbol, desc);
+                }
+            }
+            Err(e) => eprintln!("Error retrieving crypto assets: {:?}", e),
         }
     }
 

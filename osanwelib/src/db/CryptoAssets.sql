@@ -59,7 +59,7 @@ INSERT INTO "CryptoAssets" (id, net_type, chain_code, token_id, symbol, descript
 (17301504, 1, 8, 0, 'CRO', 'Cronos mainnet'),
 (17367040, 1, 9, 0, 'KCS', 'KuCoin Community Chain mainnet'),
 (17432576, 1,10, 0, 'XDAI','Gnosis Chain (ex xDai)'),
-(17498112, 1,11, 0, 'ETH', 'Base mainnet від Coinbase'),
+(17498112, 1,11, 0, 'ETH', 'Base mainnet of Coinbase'),
 
 -- 2) EVM TESTNET (net_type = 2)
 -- 2.1 Ethereum testnets
