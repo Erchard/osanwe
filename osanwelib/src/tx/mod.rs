@@ -1,4 +1,4 @@
-use crate::db;
+use crate::{db, keys};
 use crate::generated::TransactionPb;
 use ethers::types::U256;
 use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
@@ -248,12 +248,14 @@ pub fn convert_amount_to_bytes(amount_str: &str) -> Result<[u8; 32], Box<dyn Err
 }
 
 pub fn send_money(
-    _password: &str, // Префіксовано з _
+    external_key: &str, 
     amount_str: &str,
     currency_id: u32,
     recipient: &str,
 ) -> Result<TransactionPb, Box<dyn Error>> {
     let amount_bytes = convert_amount_to_bytes(amount_str)?;
+    let sender_address_str = keys::get_wallet_address(external_key.as_bytes())?;
+    let sender_address = decode(&sender_address_str[2..])?;
     let recipient_bytes = decode(&recipient[2..])?;
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
 
@@ -264,13 +266,14 @@ pub fn send_money(
         currency_id,
         amount: amount_bytes.to_vec(),
         timestamp,
-        sender_address: Vec::new(), // Порожнє
+        sender_address, // Порожнє
         sender_output_index: 0,     // За замовчуванням
         recipient_address: recipient_bytes,
         sender_signature: Vec::new(),        // Порожнє
         source_transaction_hash: Vec::new(), // Порожнє
     };
-
+    println!("{:?}", sender_address_str);
+    println!("{:?}", transaction);
     Ok(transaction)
 }
 
