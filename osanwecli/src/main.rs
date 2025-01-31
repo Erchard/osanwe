@@ -127,19 +127,16 @@ fn main() {
         let recipient = &values[2];
 
         // Отримання пароля
-        let password = matches
-            .get_one::<String>("password")
-            .cloned()
-            .or_else(|| {
-                println!("Enter password:");
-                match read_password() {
-                    Ok(password) => Some(password),
-                    Err(e) => {
-                        eprintln!("Error reading password: {:?}", e);
-                        None
-                    }
+        let password = matches.get_one::<String>("password").cloned().or_else(|| {
+            println!("Enter password:");
+            match read_password() {
+                Ok(password) => Some(password),
+                Err(e) => {
+                    eprintln!("Error reading password: {:?}", e);
+                    None
                 }
-            });
+            }
+        });
 
         if let Some(password) = password {
             // Перевірка пароля
@@ -162,6 +159,11 @@ fn main() {
                     println!("  Amount (string): {}", amount_str);
                     println!("  Currency ID (u32): {}", currency_id);
                     println!("  Recipient: {}", recipient);
+
+                    match tx::send_money(&password, &amount_str, currency_id, &recipient) {
+                        Ok(_) => println!("Ok"),
+                        Err(_) => println!("Err"),
+                    };
 
                     // Тут можна додати логіку збереження транзакції в базу даних
                 }

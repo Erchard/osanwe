@@ -3,6 +3,7 @@ use crate::generated::TransactionPb;
 use ethers::types::U256;
 use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
 use hex::decode;
+// Видалено: use prost::bytes;
 use std::error::Error;
 
 /// Converts a byte slice to a hex string with "0x" prefix
@@ -167,17 +168,20 @@ pub fn parse_transaction_pb(
 /// * `Ok(())` - Якщо збереження успішне.
 /// * `Err(Box<dyn Error>)` - Якщо виникла помилка.
 ///
-/// # Example
-///
-/// ```
-/// let tx = TransactionPb { /* fields */ };
-/// store_transaction(&tx)?;
-/// ```
+
 pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
     let tx_db = to_transaction_db(tx);
-    db::save_transaction(&tx_db)?;
+
+    // Перевіряємо, чи транзакція вже існує
+    if db::get_transaction_by_hash(&tx_db.transaction_hash).is_ok() {
+        println!("Transaction already exists. Skipping insertion.");
+        return Ok(()); // Якщо є, просто ігноруємо
+    }
+
+    db::save_transaction(&tx_db)?; // Вставка тільки якщо запису немає
     Ok(())
 }
+
 
 /// Отримує транзакцію з бази даних за її хешем.
 ///
@@ -190,17 +194,16 @@ pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
 /// * `Ok(TransactionPb)` - Якщо транзакція знайдена.
 /// * `Err(Box<dyn Error>)` - Якщо транзакцію не знайдено або виникла помилка.
 ///
-/// # Example
-///
-/// ```
-/// let tx_hash = "0x...".to_string();
-/// let tx = fetch_transaction(&tx_hash)?;
-/// ```
 pub fn fetch_transaction(transaction_hash: &str) -> Result<TransactionPb, Box<dyn Error>> {
-    let tx_db = db::get_transaction_by_hash(transaction_hash)?;
-    let tx_pb = from_transaction_db(&tx_db)?;
-    Ok(tx_pb)
+    match db::get_transaction_by_hash(transaction_hash) {
+        Ok(tx_db) => Ok(from_transaction_db(&tx_db)?),
+        Err(err) if err.to_string().contains("QueryReturnedNoRows") => {
+            Err(format!("Transaction with hash {} not found", transaction_hash).into())
+        }
+        Err(err) => Err(err.into()),
+    }
 }
+
 
 /// Конвертує суму з рядка у 32-байтовий шістнадцятковий рядок.
 ///
@@ -216,10 +219,22 @@ pub fn fetch_transaction(transaction_hash: &str) -> Result<TransactionPb, Box<dy
 /// # Приклад
 ///
 /// ```
+/// use osanwelib::tx::convert_amount_to_hex;
+///
 /// let hex = convert_amount_to_hex("0.000000000000000023")?;
 /// assert_eq!(hex, "0x0000000000000000000000000000000000000000000000000000000000000017");
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn convert_amount_to_hex(amount_str: &str) -> Result<String, Box<dyn Error>> {
+    let bytes = convert_amount_to_bytes(amount_str)?; // Використовуємо `?` замість `unwrap()`
+
+    // Перетворення байтів у шістнадцятковий рядок з префіксом "0x"
+    let hex_str = format!("0x{}", ethers_hex::encode(bytes));
+
+    Ok(hex_str)
+}
+
+pub fn convert_amount_to_bytes(amount_str: &str) -> Result<[u8; 32], Box<dyn Error>> {
     let decimals = 18; // Кількість десяткових знаків для ETH. Змінюйте за потреби.
 
     // Перетворення рядка у U256 (wei) використовуючи ethers::utils::parse_units
@@ -230,11 +245,17 @@ pub fn convert_amount_to_hex(amount_str: &str) -> Result<String, Box<dyn Error>>
     // Перетворення U256 у 32-байтовий масив (big-endian)
     let mut bytes = [0u8; 32];
     amount_wei.to_big_endian(&mut bytes);
+    Ok(bytes)
+}
 
-    // Перетворення байтів у шістнадцятковий рядок з префіксом "0x"
-    let hex_str = format!("0x{}", ethers_hex::encode(bytes));
-
-    Ok(hex_str)
+pub fn send_money(
+    _password: &str,   // Префіксовано з _
+    _amount_str: &str, // Префіксовано з _
+    _currency_id: u32, // Префіксовано з _
+    _recipient: &str,  // Префіксовано з _
+) -> Result<(), Box<dyn Error>> {
+    println!("Tx");
+    Ok(())
 }
 
 #[cfg(test)]
