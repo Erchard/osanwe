@@ -2458,6 +2458,7 @@ dependencies = [
  "cipher 0.3.0",
  "env_logger",
  "ethers",
+ "futures",
  "hex",
  "log",
  "prost 0.12.6",
