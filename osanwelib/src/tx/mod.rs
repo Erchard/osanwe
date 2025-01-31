@@ -1,10 +1,17 @@
 use crate::db;
 use crate::generated::TransactionPb;
+use ethers::types::U256;
+use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
 use hex::decode;
 use std::error::Error;
 
+/// Converts a byte slice to a hex string with "0x" prefix
+fn to_hex_string(bytes: &[u8]) -> String {
+    format!("0x{}", hex::encode(bytes))
+}
+
 /// Структура, підготовлена до збереження в БД
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)] // Added PartialEq and Eq for testing
 pub struct TransactionDb {
     pub transaction_hash: String,
     pub transaction_type: u32,
@@ -16,11 +23,6 @@ pub struct TransactionDb {
     pub recipient_address: String,
     pub sender_signature: Option<String>,
     pub source_transaction_hash: Option<String>,
-}
-
-/// Допоміжна функція для конвертації байтових полів у формат 0x...
-fn to_hex_string(bytes: &[u8]) -> String {
-    format!("0x{}", hex::encode(bytes))
 }
 
 /// Конвертація TransactionPb у TransactionDb
@@ -165,6 +167,12 @@ pub fn parse_transaction_pb(
 /// * `Ok(())` - Якщо збереження успішне.
 /// * `Err(Box<dyn Error>)` - Якщо виникла помилка.
 ///
+/// # Example
+///
+/// ```
+/// let tx = TransactionPb { /* fields */ };
+/// store_transaction(&tx)?;
+/// ```
 pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
     let tx_db = to_transaction_db(tx);
     db::save_transaction(&tx_db)?;
@@ -182,10 +190,51 @@ pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
 /// * `Ok(TransactionPb)` - Якщо транзакція знайдена.
 /// * `Err(Box<dyn Error>)` - Якщо транзакцію не знайдено або виникла помилка.
 ///
+/// # Example
+///
+/// ```
+/// let tx_hash = "0x...".to_string();
+/// let tx = fetch_transaction(&tx_hash)?;
+/// ```
 pub fn fetch_transaction(transaction_hash: &str) -> Result<TransactionPb, Box<dyn Error>> {
     let tx_db = db::get_transaction_by_hash(transaction_hash)?;
     let tx_pb = from_transaction_db(&tx_db)?;
     Ok(tx_pb)
+}
+
+/// Конвертує суму з рядка у 32-байтовий шістнадцятковий рядок.
+///
+/// # Аргументи
+///
+/// * `amount_str` - Сума у вигляді рядка, наприклад, "345.5".
+///
+/// # Повертає
+///
+/// * `Ok(String)` - 32-байтовий шістнадцятковий рядок з префіксом "0x".
+/// * `Err(Box<dyn Error>)` - Якщо виникла помилка під час конвертації.
+///
+/// # Приклад
+///
+/// ```
+/// let hex = convert_amount_to_hex("0.000000000000000023")?;
+/// assert_eq!(hex, "0x0000000000000000000000000000000000000000000000000000000000000017");
+/// ```
+pub fn convert_amount_to_hex(amount_str: &str) -> Result<String, Box<dyn Error>> {
+    let decimals = 18; // Кількість десяткових знаків для ETH. Змінюйте за потреби.
+
+    // Перетворення рядка у U256 (wei) використовуючи ethers::utils::parse_units
+    let amount_wei: U256 = ethers_parse_units(amount_str, decimals)
+        .map_err(|e| Box::<dyn Error>::from(e))?
+        .into(); // Explicitly convert the error
+
+    // Перетворення U256 у 32-байтовий масив (big-endian)
+    let mut bytes = [0u8; 32];
+    amount_wei.to_big_endian(&mut bytes);
+
+    // Перетворення байтів у шістнадцятковий рядок з префіксом "0x"
+    let hex_str = format!("0x{}", ethers_hex::encode(bytes));
+
+    Ok(hex_str)
 }
 
 #[cfg(test)]
@@ -250,6 +299,45 @@ mod tests {
             sender_signature: None,
             source_transaction_hash: None,
         }
+    }
+
+    #[test]
+    fn test_convert_amount_to_hex_large_amount() {
+        let amount_str = "345.5";
+        // 345.5 * 10^18 = 345500000000000000000 wei
+        // Convert to hex: 345500000000000000000 = 0x12bac6937669760000
+        // Pad with leading zeros to make it 32 bytes (64 hex chars)
+        let expected_hex = "0x000000000000000000000000000000000000000000000012bac6937669760000";
+        let result = convert_amount_to_hex(amount_str).unwrap();
+
+        // Assert lengths first
+        assert_eq!(
+            result.len(),
+            expected_hex.len(),
+            "Hex strings have different lengths"
+        );
+
+        // Compare byte-by-byte
+        assert_eq!(
+            result.as_bytes(),
+            expected_hex.as_bytes(),
+            "Hex strings differ at byte level"
+        );
+    }
+
+    #[test]
+    fn test_convert_amount_to_hex_large_amount_numeric() {
+        let amount_str = "345.5";
+        let expected_decimal = U256::from_dec_str("345500000000000000000").unwrap();
+
+        let result_hex = convert_amount_to_hex(amount_str).unwrap();
+        let result_bytes = hex::decode(&result_hex[2..]).unwrap();
+        let result_decimal = U256::from_big_endian(&result_bytes);
+
+        assert_eq!(
+            result_decimal, expected_decimal,
+            "Numeric values do not match"
+        );
     }
 
     #[test]
