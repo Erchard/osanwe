@@ -5,6 +5,7 @@ use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
 use hex::decode;
 // Видалено: use prost::bytes;
 use std::error::Error;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Converts a byte slice to a hex string with "0x" prefix
 fn to_hex_string(bytes: &[u8]) -> String {
@@ -182,7 +183,6 @@ pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 /// Отримує транзакцію з бази даних за її хешем.
 ///
 /// # Аргументи
@@ -203,7 +203,6 @@ pub fn fetch_transaction(transaction_hash: &str) -> Result<TransactionPb, Box<dy
         Err(err) => Err(err.into()),
     }
 }
-
 
 /// Конвертує суму з рядка у 32-байтовий шістнадцятковий рядок.
 ///
@@ -249,18 +248,46 @@ pub fn convert_amount_to_bytes(amount_str: &str) -> Result<[u8; 32], Box<dyn Err
 }
 
 pub fn send_money(
-    _password: &str,   // Префіксовано з _
-    _amount_str: &str, // Префіксовано з _
-    _currency_id: u32, // Префіксовано з _
-    _recipient: &str,  // Префіксовано з _
-) -> Result<(), Box<dyn Error>> {
-    println!("Tx");
-    Ok(())
+    _password: &str, // Префіксовано з _
+    amount_str: &str,
+    currency_id: u32,
+    recipient: &str,
+) -> Result<TransactionPb, Box<dyn Error>> {
+    let amount_bytes = convert_amount_to_bytes(amount_str)?;
+    let recipient_bytes = decode(&recipient[2..])?;
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
+
+
+    let transaction = TransactionPb {
+        transaction_hash: Vec::new(), // Порожнє
+        transaction_type: 2,          // За замовчуванням
+        currency_id,
+        amount: amount_bytes.to_vec(),
+        timestamp,
+        sender_address: Vec::new(), // Порожнє
+        sender_output_index: 0,     // За замовчуванням
+        recipient_address: recipient_bytes,
+        sender_signature: Vec::new(),        // Порожнє
+        source_transaction_hash: Vec::new(), // Порожнє
+    };
+
+    Ok(transaction)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    pub fn test_send_money() {
+        let result = send_money(
+            "password",
+            "100.5",
+            1,
+            "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef",
+        );
+        println!("{:?}", result);
+    }
 
     fn sample_transaction_pb() -> TransactionPb {
         TransactionPb {
