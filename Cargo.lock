@@ -2438,7 +2438,10 @@ name = "osanwecli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "ethers",
  "osanwelib",
+ "prost 0.12.6",
+ "prost-types",
  "rpassword",
 ]
 

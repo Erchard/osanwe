@@ -1,6 +1,10 @@
 use clap::{Arg, Command};
+use ethers::utils::hex;
+use osanwelib::{db, generated::TransactionPb, keys, tx};
+use prost::Message;
 use rpassword::read_password;
-use osanwelib::{db,tx,keys};
+use std::fs::File;
+use std::io::Write; // переконайтеся, що у Cargo.toml додано залежність prost
 
 pub fn get_matches() -> clap::ArgMatches {
     Command::new(env!("CARGO_PKG_NAME"))
@@ -162,13 +166,20 @@ fn main() {
 
                     match tx::send_money(&password, &amount_str, currency_id, &recipient) {
                         Ok(transaction) => match tx::store_transaction(&transaction) {
-                            Ok(_) => println!("Ok"),
+                            Ok(_) => {
+                                let file_path =
+                                    hex::encode(transaction.transaction_hash.clone()) + ".osnpb";
+
+                                match save_transaction_to_file(&transaction, &file_path) {
+                                    Ok(_) => println!("Ok"),
+                                    Err(e) => println!("Err {}", e),
+                                }
+                                println!("Ok");
+                            }
                             Err(e) => println!("Err {}", e),
                         },
                         Err(e) => println!("Err {}", e),
                     };
-
-                    // Тут можна додати логіку збереження транзакції в базу даних
                 }
                 Ok(false) => eprintln!("Incorrect password."),
                 Err(e) => eprintln!("Error checking password: {:?}", e),
@@ -211,4 +222,19 @@ pub fn greet() {
     let name = env!("CARGO_PKG_NAME");
     let version = env!("CARGO_PKG_VERSION");
     println!("Welcome to {} v{}!", name, version);
+}
+
+// Функція для збереження транзакції у файл
+pub fn save_transaction_to_file(
+    transaction: &TransactionPb,
+    file_path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Серіалізуємо об'єкт у вектор байтів
+    let mut buf = Vec::new();
+    transaction.encode(&mut buf)?;
+
+    // Записуємо байти у файл
+    let mut file = File::create(file_path)?;
+    file.write_all(&buf)?;
+    Ok(())
 }
