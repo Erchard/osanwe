@@ -1,6 +1,6 @@
 use clap::{Arg, Command};
-use osanwelib::*;
 use rpassword::read_password;
+use osanwelib::{db,tx,keys};
 
 pub fn get_matches() -> clap::ArgMatches {
     Command::new(env!("CARGO_PKG_NAME"))
@@ -161,8 +161,11 @@ fn main() {
                     println!("  Recipient: {}", recipient);
 
                     match tx::send_money(&password, &amount_str, currency_id, &recipient) {
-                        Ok(_) => println!("Ok"),
-                        Err(_) => println!("Err"),
+                        Ok(transaction) => match tx::store_transaction(&transaction) {
+                            Ok(_) => println!("Ok"),
+                            Err(e) => println!("Err {}", e),
+                        },
+                        Err(e) => println!("Err {}", e),
                     };
 
                     // Тут можна додати логіку збереження транзакції в базу даних
