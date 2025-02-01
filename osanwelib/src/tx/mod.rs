@@ -258,6 +258,7 @@ pub fn send_money(
     let sender_address = decode(&sender_address_str[2..])?;
     let recipient_bytes = decode(&recipient[2..])?;
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
+    let sender_output_index = db::get_next_sender_output_index(&sender_address_str)?;
 
     let mut transaction = TransactionPb {
         transaction_hash: Vec::new(), // Порожнє
@@ -266,7 +267,7 @@ pub fn send_money(
         amount: amount_bytes.to_vec(),
         timestamp,
         sender_address,
-        sender_output_index: 0, // За замовчуванням
+        sender_output_index, 
         recipient_address: recipient_bytes,
         sender_signature: Vec::new(),        // Порожнє
         source_transaction_hash: Vec::new(), // Порожнє

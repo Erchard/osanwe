@@ -5,7 +5,7 @@ use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use hex::{decode, encode};
 use rand::Rng; // Для генерації випадкового IV
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
 use sha3::{Digest, Keccak256};
 use std::error::Error;
 use std::fs;
@@ -335,6 +335,25 @@ pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, 
     })?;
 
     Ok(tx_db)
+}
+
+
+/// Повертає наступний sender_output_index для заданого sender_address.
+/// Якщо записів немає, повертається 0.
+pub fn get_next_sender_output_index(sender_address: &str) -> Result<u32, Box<dyn Error>> {
+    let conn = Connection::open(DB_PATH)?;
+
+    // Виконуємо запит для отримання максимального значення sender_output_index для даної адреси.
+    let max_index: Option<i64> = conn.query_row(
+        "SELECT MAX(sender_output_index) FROM transactions WHERE sender_address = ?1",
+        params![sender_address],
+        |row| row.get(0),
+    ).optional()?; // Використовуємо optional, оскільки результат може бути NULL
+
+    // Якщо записів немає, повертаємо 0, інакше збільшуємо знайдене значення на 1.
+    let next_index = max_index.map(|v| v + 1).unwrap_or(1);
+
+    Ok(next_index as u32)
 }
 
 #[cfg(test)]
