@@ -272,9 +272,16 @@ pub fn send_money(
         source_transaction_hash: Vec::new(), // Порожнє
     };
 
-    let transaction_hash = calc_tx_hash(&transaction)?;
+    let data = tx_to_bytes(&transaction);
+    println!("data={:?}", data);
+
+    let transaction_hash = keccak256(&data);
+
     transaction.transaction_hash = transaction_hash.to_vec();
 
+    let  sender_signature = keys::sign_byte_array_sync(data, external_key.as_bytes())?;
+
+    transaction.sender_signature = sender_signature;
     println!("{:?}", sender_address_str);
     println!("{:?}", transaction);
     Ok(transaction)
@@ -309,21 +316,6 @@ pub fn tx_to_bytes(tx: &TransactionPb) -> Vec<u8> {
     buffer
 }
 
-/// Обчислює хеш транзакції типу 2.
-/// Якщо `transaction_type` не дорівнює 2, повертається помилка.
-pub fn calc_tx_hash(tx: &TransactionPb) -> Result<Vec<u8>, Box<dyn Error>> {
-    // Перевірка: розрахунок хешу підтримується лише для транзакцій типу 2.
-    if tx.transaction_type != 2 {
-        return Err("Непідтримуваний тип транзакції для розрахунку хешу (очікується 2)".into());
-    }
-
-    let buffer = tx_to_bytes(tx);
-    println!("tx_bytes={:?}", buffer);
-
-
-    let hash = keccak256(&buffer);
-    Ok(hash.to_vec())
-}
 
 #[cfg(test)]
 mod tests {

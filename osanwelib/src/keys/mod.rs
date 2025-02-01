@@ -53,13 +53,12 @@ pub fn get_wallet_address(external_key: &[u8]) -> Result<String, Box<dyn Error>>
 }
 
 
-/// Підписує масив байтів приватним ключем з бази даних.
-pub async fn sign_byte_array(data: Vec<u8>, external_key: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn sign_byte_array_sync(data: Vec<u8>, external_key: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     // Отримуємо збережений приватний ключ з бази даних
     let priv_key_hex = db::get_property_by_key(PRIV_KEY, external_key)?;
     let priv_key_bytes = decode(priv_key_hex)?;
 
-    // Перетворюємо `Vec<u8>` у `[u8; 32]`
+    // Перетворюємо Vec<u8> у [u8; 32]
     let priv_key_array: [u8; 32] = priv_key_bytes
         .try_into()
         .map_err(|_| "Invalid private key length")?;
@@ -67,12 +66,12 @@ pub async fn sign_byte_array(data: Vec<u8>, external_key: &[u8]) -> Result<Vec<u
     // Створюємо гаманець із приватного ключа
     let wallet = LocalWallet::from(SigningKey::from_bytes((&priv_key_array).into())?);
 
-
-    // Хешуємо дані Keccak-256 (Ethereum-стандарт)
+    // Хешуємо дані за допомогою Keccak-256 (Ethereum-стандарт)
     let digest = keccak256(&data);
+    let hash = H256::from_slice(&digest);
 
-    // Підписуємо хешовані дані
-    let signature = wallet.sign_message(&digest).await?;
+    // Синхронно підписуємо хешовані дані
+    let signature = wallet.sign_hash(hash)?;
 
     // Повертаємо підпис у вигляді байтового масиву
     Ok(signature.to_vec())
@@ -96,7 +95,7 @@ mod tests {
         db::insert_property(PRIV_KEY, &priv_key_hex, external_key).unwrap();
         
         // Await the signature future
-        let signature = futures::executor::block_on(sign_byte_array(data.clone(), external_key)).unwrap();
+        let signature = sign_byte_array_sync(data.clone(), external_key).unwrap();
         assert!(!signature.is_empty(), "Підпис не повинен бути порожнім");
     }
     
