@@ -167,10 +167,7 @@ fn main() {
                     match tx::send_money(&password, &amount_str, currency_id, &recipient) {
                         Ok(transaction) => match tx::store_transaction(&transaction) {
                             Ok(_) => {
-                                let file_path =
-                                    hex::encode(transaction.transaction_hash.clone()) + ".osnpb";
-
-                                match save_transaction_to_file(&transaction, &file_path) {
+                                match save_transaction_as_json(&transaction) {
                                     Ok(_) => println!("Ok"),
                                     Err(e) => println!("Err {}", e),
                                 }
@@ -188,6 +185,18 @@ fn main() {
     }
 
     greet();
+}
+
+fn save_transaction_as_json(transaction: &TransactionPb) -> Result<(), Box<dyn std::error::Error>> {
+    let tx_db = tx::to_transaction_db(&transaction);
+    let tx_json = tx::tx_to_json(&tx_db)?;
+
+    let file_path = hex::encode(transaction.transaction_hash.clone()) + ".osnjs";
+ 
+    // Записуємо байти у файл
+    let mut file = File::create(file_path)?;
+    file.write_all(tx_json.as_bytes())?;
+    Ok(())
 }
 
 pub fn prompt_for_password() -> Option<String> {
@@ -227,8 +236,8 @@ pub fn greet() {
 // Функція для збереження транзакції у файл
 pub fn save_transaction_to_file(
     transaction: &TransactionPb,
-    file_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let file_path = hex::encode(transaction.transaction_hash.clone()) + ".osnpb";
     // Серіалізуємо об'єкт у вектор байтів
     let mut buf = Vec::new();
     transaction.encode(&mut buf)?;

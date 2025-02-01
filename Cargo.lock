@@ -2469,6 +2469,8 @@ dependencies = [
  "prost-types",
  "rand",
  "rusqlite",
+ "serde",
+ "serde_json",
  "sha3",
  "tonic",
 ]

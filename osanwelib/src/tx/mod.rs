@@ -6,6 +6,8 @@ use ethers::utils::keccak256;
 use hex::decode;
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
+use serde::Serialize;
+use serde_json;
 
 /// Converts a byte slice to a hex string with "0x" prefix
 fn to_hex_string(bytes: &[u8]) -> String {
@@ -13,7 +15,8 @@ fn to_hex_string(bytes: &[u8]) -> String {
 }
 
 /// Структура, підготовлена до збереження в БД
-#[derive(Debug, Clone, PartialEq, Eq)] // Added PartialEq and Eq for testing
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)] // Added PartialEq and Eq for testing
 pub struct TransactionDb {
     pub transaction_hash: String,
     pub transaction_type: u32,
@@ -25,6 +28,12 @@ pub struct TransactionDb {
     pub recipient_address: String,
     pub sender_signature: Option<String>,
     pub source_transaction_hash: Option<String>,
+}
+
+/// Функція, яка конвертує TransactionDb у JSON-рядок.
+pub fn tx_to_json(tx: &TransactionDb) -> Result<String, Box<dyn Error>> {
+    let json = serde_json::to_string(tx)?;
+    Ok(json)
 }
 
 /// Конвертація TransactionPb у TransactionDb
