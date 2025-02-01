@@ -205,15 +205,46 @@ fn main() {
         }
 
         let recipient_address = &values[0];
-        let amount = &values[1];
-        let currency_id = &values[2];
+        let amount_str = &values[1];
+        let currency_id_str = &values[2];
         let source_transaction_hash = &values[3];
+
+        // Спробуємо конвертувати currency_id_str у u32
+        let currency_id: u32 = match currency_id_str.parse() {
+            Ok(val) => val,
+            Err(_) => {
+                eprintln!(
+                    "Invalid currency_id: '{}'. Must be a valid u32.",
+                    currency_id_str
+                );
+                return;
+            }
+        };
 
         println!("Replenishing request received:");
         println!("  Recipient Address: {}", recipient_address);
-        println!("  Amount: {}", amount);
+        println!("  Amount: {}", amount_str);
         println!("  Currency ID: {}", currency_id);
         println!("  Source Transaction Hash: {}", source_transaction_hash);
+
+        match tx::replenishing(
+            &recipient_address,
+            &amount_str,
+            currency_id,
+            &source_transaction_hash,
+        ) {
+            Ok(transaction) => match tx::store_transaction(&transaction) {
+                Ok(_) => {
+                    match save_transaction_as_json(&transaction) {
+                        Ok(_) => println!("Ok"),
+                        Err(e) => println!("Err {}", e),
+                    }
+                    println!("Ok");
+                }
+                Err(e) => println!("Err {}", e),
+            },
+            Err(e) => println!("Err {}", e),
+        }
     }
 
     greet();

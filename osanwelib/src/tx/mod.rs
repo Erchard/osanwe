@@ -1,13 +1,13 @@
 use crate::generated::TransactionPb;
 use crate::{db, keys};
 use ethers::types::U256;
-use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
 use ethers::utils::keccak256;
+use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
 use hex::decode;
-use std::error::Error;
-use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 use serde_json;
+use std::error::Error;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Converts a byte slice to a hex string with "0x" prefix
 fn to_hex_string(bytes: &[u8]) -> String {
@@ -256,6 +256,40 @@ pub fn convert_amount_to_bytes(amount_str: &str) -> Result<[u8; 32], Box<dyn Err
     Ok(bytes)
 }
 
+pub fn replenishing(
+    recipient_address: &str,
+    amount_str: &str,
+    currency_id: u32,
+    source_transaction: &str,
+) -> Result<TransactionPb, Box<dyn Error>> {
+    let recipient_bytes = decode(&recipient_address[2..])?;
+    let amount_bytes = convert_amount_to_bytes(amount_str)?;
+    let source_transaction_hash = decode(&source_transaction[2..])?;
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
+
+    let mut transaction = TransactionPb {
+        transaction_hash: Vec::new(), // Порожнє
+        transaction_type: 1,          // За замовчуванням
+        currency_id,
+        amount: amount_bytes.to_vec(),
+        timestamp,
+        sender_address: Vec::new(), 
+        sender_output_index: 0,
+        recipient_address: recipient_bytes,
+        sender_signature: Vec::new(),        // Порожнє
+        source_transaction_hash, 
+    };
+
+    let data = tx_to_bytes(&transaction);
+    println!("data={:?}", data);
+
+    let transaction_hash = keccak256(&data);
+
+    transaction.transaction_hash = transaction_hash.to_vec();
+    println!("{:?}", transaction);
+    Ok(transaction)
+}
+
 pub fn send_money(
     external_key: &str,
     amount_str: &str,
@@ -276,7 +310,7 @@ pub fn send_money(
         amount: amount_bytes.to_vec(),
         timestamp,
         sender_address,
-        sender_output_index, 
+        sender_output_index,
         recipient_address: recipient_bytes,
         sender_signature: Vec::new(),        // Порожнє
         source_transaction_hash: Vec::new(), // Порожнє
@@ -289,7 +323,7 @@ pub fn send_money(
 
     transaction.transaction_hash = transaction_hash.to_vec();
 
-    let  sender_signature = keys::sign_byte_array_sync(data, external_key.as_bytes())?;
+    let sender_signature = keys::sign_byte_array_sync(data, external_key.as_bytes())?;
 
     transaction.sender_signature = sender_signature;
     println!("{:?}", sender_address_str);
@@ -308,24 +342,31 @@ pub fn send_money(
 pub fn tx_to_bytes(tx: &TransactionPb) -> Vec<u8> {
     let mut buffer = Vec::new();
 
-    // Додаємо transaction_type (u32, 4 байти)
-    buffer.extend_from_slice(&tx.transaction_type.to_be_bytes());
-    // Додаємо currency_id (u32, 4 байти)
-    buffer.extend_from_slice(&tx.currency_id.to_be_bytes());
-    // Додаємо amount (масив байтів, наприклад, 32 байти)
-    buffer.extend_from_slice(&tx.amount);
-    // Додаємо timestamp (u64, 8 байтів)
-    buffer.extend_from_slice(&tx.timestamp.to_be_bytes());
-    // Додаємо sender_address (масив байтів, наприклад, 20 байтів)
-    buffer.extend_from_slice(&tx.sender_address);
-    // Додаємо sender_output_index (u32, 4 байти)
-    buffer.extend_from_slice(&tx.sender_output_index.to_be_bytes());
-    // Додаємо recipient_address (масив байтів, наприклад, 20 байтів)
-    buffer.extend_from_slice(&tx.recipient_address);
-
+    if tx.transaction_type == 1 {
+        // Серіалізація для транзакції типу 1
+        buffer.extend_from_slice(&tx.transaction_type.to_be_bytes());
+        buffer.extend_from_slice(&tx.currency_id.to_be_bytes());
+        buffer.extend_from_slice(&tx.amount);
+        buffer.extend_from_slice(&tx.timestamp.to_be_bytes());
+        buffer.extend_from_slice(&tx.recipient_address);
+        buffer.extend_from_slice(&tx.source_transaction_hash);
+    } else if tx.transaction_type == 2 {
+        // Серіалізація для транзакції типу 2 (на даному етапі така ж, як для типу 1)
+        buffer.extend_from_slice(&tx.transaction_type.to_be_bytes());
+        buffer.extend_from_slice(&tx.currency_id.to_be_bytes());
+        buffer.extend_from_slice(&tx.amount);
+        buffer.extend_from_slice(&tx.timestamp.to_be_bytes());
+        buffer.extend_from_slice(&tx.sender_address);
+        buffer.extend_from_slice(&tx.sender_output_index.to_be_bytes());
+        buffer.extend_from_slice(&tx.recipient_address);
+    } else {
+        // Обробка випадку, коли тип транзакції не розпізнано
+        // Можна повертати помилку або виконувати якусь дефолтну логіку
+        // Наприклад, для простоти повернемо пустий вектор:
+        return Vec::new();
+    }
     buffer
 }
-
 
 #[cfg(test)]
 mod tests {
