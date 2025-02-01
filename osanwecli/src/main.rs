@@ -41,6 +41,18 @@ pub fn get_matches() -> clap::ArgMatches {
                 .value_names(["AMOUNT", "CURRENCY_ID", "RECIPIENT"])
                 .help("Send tokens to the recipient. Example: --send 345.5 16842752 0x..."),
         )
+        .arg(
+            Arg::new("replenishing")
+                .long("replenishing")
+                .num_args(4)
+                .value_names([
+                    "RECIPIENT_ADDRESS",
+                    "AMOUNT",
+                    "CURRENCY_ID",
+                    "SOURCE_TRANSACTION_HASH"
+                ])
+                .help("Replenish wallet from external blockchain. Example: --replenishing 0xeb718af7c8f7df1b50eb169be1a85630d3aefe68 2002.736 16842752 0x53004c1174523fb5b3ec8809c36dadf4c9300297a002d160f85c9b5eca73ca89"),
+        )
         .get_matches()
 }
 
@@ -184,6 +196,26 @@ fn main() {
         }
     }
 
+    // Нова логіка для --replenishing
+    if let Some(values) = matches.get_many::<String>("replenishing") {
+        let values: Vec<&String> = values.collect();
+        if values.len() != 4 {
+            eprintln!("--replenishing requires exactly 4 arguments: RECIPIENT_ADDRESS AMOUNT CURRENCY_ID SOURCE_TRANSACTION_HASH");
+            return;
+        }
+
+        let recipient_address = &values[0];
+        let amount = &values[1];
+        let currency_id = &values[2];
+        let source_transaction_hash = &values[3];
+
+        println!("Replenishing request received:");
+        println!("  Recipient Address: {}", recipient_address);
+        println!("  Amount: {}", amount);
+        println!("  Currency ID: {}", currency_id);
+        println!("  Source Transaction Hash: {}", source_transaction_hash);
+    }
+
     greet();
 }
 
@@ -192,7 +224,7 @@ fn save_transaction_as_json(transaction: &TransactionPb) -> Result<(), Box<dyn s
     let tx_json = tx::tx_to_json(&tx_db)?;
 
     let file_path = hex::encode(transaction.transaction_hash.clone()) + ".osnjs";
- 
+
     // Записуємо байти у файл
     let mut file = File::create(file_path)?;
     file.write_all(tx_json.as_bytes())?;
