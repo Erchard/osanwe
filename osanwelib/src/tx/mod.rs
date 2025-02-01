@@ -1,11 +1,9 @@
 use crate::generated::TransactionPb;
 use crate::{db, keys};
-use ethers::core::k256::sha2::Sha256;
 use ethers::types::U256;
 use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
+use ethers::utils::keccak256;
 use hex::decode;
-use sha3::Digest;
-// Видалено: use prost::bytes;
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -282,55 +280,48 @@ pub fn send_money(
     Ok(transaction)
 }
 
+/// Перетворює TransactionPb у вектор байтів, який містить наступні поля:
+/// - transaction_type (u32, 4 байти, big-endian)
+/// - currency_id (u32, 4 байти, big-endian)
+/// - amount (масив байтів, наприклад, 32 байти)
+/// - timestamp (u64, 8 байтів, big-endian)
+/// - sender_address (масив байтів, наприклад, 20 байтів)
+/// - sender_output_index (u32, 4 байти, big-endian)
+/// - recipient_address (масив байтів, наприклад, 20 байтів)
+pub fn tx_to_bytes(tx: &TransactionPb) -> Vec<u8> {
+    let mut buffer = Vec::new();
+
+    // Додаємо transaction_type (u32, 4 байти)
+    buffer.extend_from_slice(&tx.transaction_type.to_be_bytes());
+    // Додаємо currency_id (u32, 4 байти)
+    buffer.extend_from_slice(&tx.currency_id.to_be_bytes());
+    // Додаємо amount (масив байтів, наприклад, 32 байти)
+    buffer.extend_from_slice(&tx.amount);
+    // Додаємо timestamp (u64, 8 байтів)
+    buffer.extend_from_slice(&tx.timestamp.to_be_bytes());
+    // Додаємо sender_address (масив байтів, наприклад, 20 байтів)
+    buffer.extend_from_slice(&tx.sender_address);
+    // Додаємо sender_output_index (u32, 4 байти)
+    buffer.extend_from_slice(&tx.sender_output_index.to_be_bytes());
+    // Додаємо recipient_address (масив байтів, наприклад, 20 байтів)
+    buffer.extend_from_slice(&tx.recipient_address);
+
+    buffer
+}
+
 /// Обчислює хеш транзакції типу 2.
-///
 /// Якщо `transaction_type` не дорівнює 2, повертається помилка.
-///
-/// Поля, що використовуються для обчислення хешу:
-/// - `transaction_type` (u32, 4 байти, big-endian)
-/// - `currency_id` (u32, 4 байти, big-endian)
-/// - `amount` (масив байтів, наприклад, 32 байти)
-/// - `timestamp` (u64, 8 байтів, big-endian)
-/// - `sender_address` (масив байтів, наприклад, 20 байтів)
-/// - `sender_output_index` (u32, 4 байти, big-endian)
-/// - `recipient_address` (масив байтів, наприклад, 20 байтів)
-///
-/// Після конкатенації обчислюється SHA256 хеш отриманого буфера.
-///
 pub fn calc_tx_hash(tx: &TransactionPb) -> Result<Vec<u8>, Box<dyn Error>> {
     // Перевірка: розрахунок хешу підтримується лише для транзакцій типу 2.
     if tx.transaction_type != 2 {
         return Err("Непідтримуваний тип транзакції для розрахунку хешу (очікується 2)".into());
     }
 
-    let mut buffer = Vec::new();
-
-    // Додаємо transaction_type (u32, 4 байти)
-    buffer.extend_from_slice(&tx.transaction_type.to_be_bytes());
-
-    // Додаємо currency_id (u32, 4 байти)
-    buffer.extend_from_slice(&tx.currency_id.to_be_bytes());
-
-    // Додаємо amount (масив байтів, наприклад, 32 байти)
-    buffer.extend_from_slice(&tx.amount);
-
-    // Додаємо timestamp (u64, 8 байтів)
-    buffer.extend_from_slice(&tx.timestamp.to_be_bytes());
-
-    // Додаємо sender_address (масив байтів, наприклад, 20 байтів)
-    buffer.extend_from_slice(&tx.sender_address);
-
-    // Додаємо sender_output_index (u32, 4 байти)
-    buffer.extend_from_slice(&tx.sender_output_index.to_be_bytes());
-
-    // Додаємо recipient_address (масив байтів, наприклад, 20 байтів)
-    buffer.extend_from_slice(&tx.recipient_address);
-
+    let buffer = tx_to_bytes(tx);
     println!("tx_bytes={:?}", buffer);
 
-    // Обчислюємо SHA256 хеш конкатенованого буфера
-    let hash = Sha256::digest(&buffer);
 
+    let hash = keccak256(&buffer);
     Ok(hash.to_vec())
 }
 
