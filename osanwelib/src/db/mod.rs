@@ -356,6 +356,60 @@ pub fn get_next_sender_output_index(sender_address: &str) -> Result<u32, Box<dyn
     Ok(next_index as u32)
 }
 
+
+
+pub fn get_wallet_balance(wallet_address: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let conn = Connection::open(DB_PATH)?;
+
+    // Отримуємо всі вхідні транзакції (отримані кошти)
+    let mut stmt = conn.prepare(
+        "SELECT amount FROM transactions WHERE recipient_address = ?1"
+    )?;
+    let incoming_amounts: Vec<String> = stmt.query_map(params![wallet_address], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Отримуємо всі вихідні транзакції (витрачені кошти)
+    let mut stmt = conn.prepare(
+        "SELECT amount FROM transactions WHERE sender_address = ?1"
+    )?;
+    let outgoing_amounts: Vec<String> = stmt.query_map(params![wallet_address], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut total_balance = [0u8; 32];
+    let mut carry: u16;
+
+    // Додаємо всі отримані суми з урахуванням перенесення
+    for amount in incoming_amounts {
+        let amount_bytes = decode(amount)?;
+        if amount_bytes.len() != 32 {
+            return Err("Невірний формат amount, очікується 32 байти".into());
+        }
+        carry = 0;
+        for i in 0..32 {
+            let sum = total_balance[i] as u16 + amount_bytes[i] as u16 + carry;
+            total_balance[i] = sum as u8;
+            carry = sum >> 8;
+        }
+    }
+
+    // Віднімаємо всі витрачені суми з урахуванням перенесення
+    for amount in outgoing_amounts {
+        let amount_bytes = decode(amount)?;
+        if amount_bytes.len() != 32 {
+            return Err("Невірний формат amount, очікується 32 байти".into());
+        }
+        carry = 0;
+        for i in 0..32 {
+            let diff = total_balance[i] as i16 - amount_bytes[i] as i16 - carry as i16;
+            total_balance[i] = diff as u8;
+            carry = if diff < 0 { 1 } else { 0 };
+        }
+    }
+
+    Ok(total_balance.to_vec())
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
