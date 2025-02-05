@@ -4,7 +4,7 @@ use ethers::types::U256;
 use ethers::utils::keccak256;
 use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
 use hex::decode;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,7 +16,7 @@ fn to_hex_string(bytes: &[u8]) -> String {
 
 /// Структура, підготовлена до збереження в БД
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)] // Added PartialEq and Eq for testing
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)] // Added PartialEq and Eq for testing
 pub struct TransactionDb {
     pub transaction_hash: String,
     pub transaction_type: u32,
@@ -34,6 +34,12 @@ pub struct TransactionDb {
 pub fn tx_to_json(tx: &TransactionDb) -> Result<String, Box<dyn Error>> {
     let json = serde_json::to_string(tx)?;
     Ok(json)
+}
+
+/// Функція, яка конвертує JSON-рядок у `TransactionDb`.
+pub fn json_to_tx(json_str: &str) -> Result<TransactionDb, Box<dyn std::error::Error>> {
+    let tx_db: TransactionDb = serde_json::from_str(json_str)?;
+    Ok(tx_db)
 }
 
 /// Конвертація TransactionPb у TransactionDb
@@ -182,6 +188,11 @@ pub fn parse_transaction_pb(
 pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
     let tx_db = to_transaction_db(tx);
 
+    store_transaction_db(&tx_db)?;
+    Ok(())
+}
+
+pub fn store_transaction_db(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
     // Перевіряємо, чи транзакція вже існує
     if db::get_transaction_by_hash(&tx_db.transaction_hash).is_ok() {
         println!("Transaction already exists. Skipping insertion.");
@@ -273,11 +284,11 @@ pub fn replenishing(
         currency_id,
         amount: amount_bytes.to_vec(),
         timestamp,
-        sender_address: Vec::new(), 
+        sender_address: Vec::new(),
         sender_output_index: 0,
         recipient_address: recipient_bytes,
-        sender_signature: Vec::new(),        // Порожнє
-        source_transaction_hash, 
+        sender_signature: Vec::new(), // Порожнє
+        source_transaction_hash,
     };
 
     let data = tx_to_bytes(&transaction);

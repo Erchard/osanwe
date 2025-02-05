@@ -1,10 +1,13 @@
 use clap::{Arg, Command};
-use ethers::{types::U256, utils::{hex, format_units}};
+use ethers::{
+    types::U256,
+    utils::{format_units, hex},
+};
 use osanwelib::{db, generated::TransactionPb, keys, tx};
 use prost::Message;
 use rpassword::read_password;
 use std::fs::File;
-use std::io::Write; // переконайтеся, що у Cargo.toml додано залежність prost
+use std::io::{Read, Write};
 
 pub fn get_matches() -> clap::ArgMatches {
     Command::new(env!("CARGO_PKG_NAME"))
@@ -59,6 +62,13 @@ pub fn get_matches() -> clap::ArgMatches {
                 .num_args(0..=1)  // 0 або 1 значення
                 .value_name("WALLET_ADDRESS")
                 .help("Show balance for the given wallet address. If no address is provided, shows your own wallet's balance.")
+        )
+        .arg(
+            Arg::new("import")
+                .long("import")
+                .num_args(1)
+                .value_name("FILE_PATH")
+                .help("Import a transaction from an external file in .osnjs format"),
         )
         .get_matches()
 }
@@ -305,6 +315,31 @@ fn main() {
         }
     }
 
+    // Логіка для --import <file_path>
+    if let Some(file_path) = matches.get_one::<String>("import") {
+        println!("Import transaction from file: {}", file_path);
+        match import_transaction(file_path) {
+            Ok(content) => {
+                println!("File content:\n{}", content);
+                // Use `?` safely now that main() returns `Result`
+                match tx::json_to_tx(&content) {
+                    Ok(tx_db) => match tx::store_transaction_db(&tx_db) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            eprintln!("Error checking password: {:?}", e);
+                            return;
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Error checking password: {:?}", e);
+                        return;
+                    }
+                }
+            }
+            Err(e) => eprintln!("Error importing transaction: {:?}", e),
+        }
+    }
+
     greet();
 }
 
@@ -321,6 +356,14 @@ fn get_or_prompt_password(matches: &clap::ArgMatches) -> Option<String> {
             None
         }
     }
+}
+
+// Функція імпорту транзакції з файлу (поки що лише зчитує весь файл як текст і повертає)
+fn import_transaction(file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let mut file = File::open(file_path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+    Ok(content)
 }
 
 fn save_transaction_as_json(transaction: &TransactionPb) -> Result<(), Box<dyn std::error::Error>> {
