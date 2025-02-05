@@ -1,5 +1,5 @@
 use clap::{Arg, Command};
-use ethers::utils::hex;
+use ethers::{types::U256, utils::{hex, format_units}};
 use osanwelib::{db, generated::TransactionPb, keys, tx};
 use prost::Message;
 use rpassword::read_password;
@@ -52,6 +52,13 @@ pub fn get_matches() -> clap::ArgMatches {
                     "SOURCE_TRANSACTION_HASH"
                 ])
                 .help("Replenish wallet from external blockchain. Example: --replenishing 0xeb718af7c8f7df1b50eb169be1a85630d3aefe68 2002.736 16842752 0x53004c1174523fb5b3ec8809c36dadf4c9300297a002d160f85c9b5eca73ca89"),
+        )
+        .arg(
+            Arg::new("balance")
+                .long("balance")
+                .num_args(0..=1)  // 0 або 1 значення
+                .value_name("WALLET_ADDRESS")
+                .help("Show balance for the given wallet address. If no address is provided, shows your own wallet's balance.")
         )
         .get_matches()
 }
@@ -247,7 +254,73 @@ fn main() {
         }
     }
 
+    // 5) Логіка для --balance [address?]
+    if matches.contains_id("balance") {
+        let maybe_address = matches.get_one::<String>("balance");
+
+        // Якщо немає адреси, беремо власну
+        let address = if let Some(addr) = maybe_address {
+            addr.clone()
+        } else {
+            println!("No wallet address provided. Showing your own wallet balance requires the password:");
+            let password = match get_or_prompt_password(&matches) {
+                Some(p) => p,
+                None => {
+                    eprintln!("Cannot read password. Aborting balance check.");
+                    return;
+                }
+            };
+            // Перевіряємо пароль і дістаємо адресу з БД
+            match db::is_password_correct(password.as_bytes()) {
+                Ok(true) => match keys::get_wallet_address(password.as_bytes()) {
+                    Ok(addr) => addr,
+                    Err(e) => {
+                        eprintln!("Error retrieving your wallet address: {:?}", e);
+                        return;
+                    }
+                },
+                Ok(false) => {
+                    eprintln!("Incorrect password.");
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("Error checking password: {:?}", e);
+                    return;
+                }
+            }
+        };
+
+        // Отримуємо 32 байти балансу з локальної БД
+        match db::get_wallet_balance(&address) {
+            Ok(balance_bytes) => {
+                let big_balance = U256::from_big_endian(&balance_bytes);
+
+                // Форматуємо з урахуванням 18 дец. знаків (наприклад, якщо це wei)
+                match format_units(big_balance, 18) {
+                    Ok(value) => println!("Balance of {}:\n{}", address, value),
+                    Err(e) => eprintln!("Error formatting balance: {:?}", e),
+                }
+            }
+            Err(e) => eprintln!("Error retrieving balance: {:?}", e),
+        }
+    }
+
     greet();
+}
+
+// Допоміжна функція - отримати пароль або прочитати з консолі, якщо не переданий
+fn get_or_prompt_password(matches: &clap::ArgMatches) -> Option<String> {
+    if let Some(pass) = matches.get_one::<String>("password") {
+        return Some(pass.clone());
+    }
+    println!("Enter password:");
+    match read_password() {
+        Ok(p) => Some(p),
+        Err(e) => {
+            eprintln!("Error reading password: {:?}", e);
+            None
+        }
+    }
 }
 
 fn save_transaction_as_json(transaction: &TransactionPb) -> Result<(), Box<dyn std::error::Error>> {

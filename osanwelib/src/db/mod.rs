@@ -10,6 +10,7 @@ use sha3::{Digest, Keccak256};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
+use ethers::types::U256;
 
 // AES-256 CBC
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
@@ -337,18 +338,19 @@ pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, 
     Ok(tx_db)
 }
 
-
 /// Повертає наступний sender_output_index для заданого sender_address.
 /// Якщо записів немає, повертається 0.
 pub fn get_next_sender_output_index(sender_address: &str) -> Result<u32, Box<dyn Error>> {
     let conn = Connection::open(DB_PATH)?;
 
     // Виконуємо запит для отримання максимального значення sender_output_index для даної адреси.
-    let max_index: Option<i64> = conn.query_row(
-        "SELECT MAX(sender_output_index) FROM transactions WHERE sender_address = ?1",
-        params![sender_address],
-        |row| row.get(0),
-    ).optional()?; // Використовуємо optional, оскільки результат може бути NULL
+    let max_index: Option<i64> = conn
+        .query_row(
+            "SELECT MAX(sender_output_index) FROM transactions WHERE sender_address = ?1",
+            params![sender_address],
+            |row| row.get(0),
+        )
+        .optional()?; // Використовуємо optional, оскільки результат може бути NULL
 
     // Якщо записів немає, повертаємо 0, інакше збільшуємо знайдене значення на 1.
     let next_index = max_index.map(|v| v + 1).unwrap_or(1);
@@ -357,56 +359,44 @@ pub fn get_next_sender_output_index(sender_address: &str) -> Result<u32, Box<dyn
 }
 
 
-
-pub fn get_wallet_balance(wallet_address: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn get_wallet_balance(wallet_address: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let conn = Connection::open(DB_PATH)?;
 
-    // Отримуємо всі вхідні транзакції (отримані кошти)
-    let mut stmt = conn.prepare(
-        "SELECT amount FROM transactions WHERE recipient_address = ?1"
-    )?;
-    let incoming_amounts: Vec<String> = stmt.query_map(params![wallet_address], |row| row.get(0))?
+    // 1) Всі вхідні amount
+    let mut stmt = conn.prepare("SELECT amount FROM transactions WHERE recipient_address = ?1")?;
+    let incoming_amounts: Vec<String> = stmt
+        .query_map(params![wallet_address], |row| row.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Отримуємо всі вихідні транзакції (витрачені кошти)
-    let mut stmt = conn.prepare(
-        "SELECT amount FROM transactions WHERE sender_address = ?1"
-    )?;
-    let outgoing_amounts: Vec<String> = stmt.query_map(params![wallet_address], |row| row.get(0))?
+    // 2) Всі вихідні amount
+    let mut stmt = conn.prepare("SELECT amount FROM transactions WHERE sender_address = ?1")?;
+    let outgoing_amounts: Vec<String> = stmt
+        .query_map(params![wallet_address], |row| row.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut total_balance = [0u8; 32];
-    let mut carry: u16;
+    // Використовуємо U256 із crates `ethers`.
+    let mut total = U256::zero();
 
-    // Додаємо всі отримані суми з урахуванням перенесення
-    for amount in incoming_amounts {
-        let amount_bytes = decode(amount)?;
-        if amount_bytes.len() != 32 {
-            return Err("Невірний формат amount, очікується 32 байти".into());
-        }
-        carry = 0;
-        for i in 0..32 {
-            let sum = total_balance[i] as u16 + amount_bytes[i] as u16 + carry;
-            total_balance[i] = sum as u8;
-            carry = sum >> 8;
-        }
+    // Додаємо все, що прийшло
+    for amount_hex in incoming_amounts {
+        // Відрізаємо `0x`, якщо воно є
+        let s = amount_hex.trim_start_matches("0x");
+        let val = U256::from_str_radix(s, 16)?; // Парсимо шістнадцятковий рядок
+        total = total.checked_add(val).ok_or("Overflow in addition")?;
     }
 
-    // Віднімаємо всі витрачені суми з урахуванням перенесення
-    for amount in outgoing_amounts {
-        let amount_bytes = decode(amount)?;
-        if amount_bytes.len() != 32 {
-            return Err("Невірний формат amount, очікується 32 байти".into());
-        }
-        carry = 0;
-        for i in 0..32 {
-            let diff = total_balance[i] as i16 - amount_bytes[i] as i16 - carry as i16;
-            total_balance[i] = diff as u8;
-            carry = if diff < 0 { 1 } else { 0 };
-        }
+    // Віднімаємо все, що пішло
+    for amount_hex in outgoing_amounts {
+        let s = amount_hex.trim_start_matches("0x");
+        let val = U256::from_str_radix(s, 16)?;
+        total = total.checked_sub(val).ok_or("Underflow in subtraction")?;
     }
 
-    Ok(total_balance.to_vec())
+    // Повертаємо 32 байти в Big-Endian (зазвичай), або хочемо зберегти little?
+    // U256 має методи для виводу байтів:
+    let mut buf = [0u8; 32];
+    total.to_big_endian(&mut buf);
+    Ok(buf.to_vec())
 }
 
 
