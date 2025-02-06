@@ -322,8 +322,8 @@ fn main() {
             Ok(content) => {
                 println!("File content:\n{}", content);
                 // Use `?` safely now that main() returns `Result`
-                match tx::json_to_tx(&content) {
-                    Ok(tx_db) => match tx::store_transaction_db(&tx_db) {
+                match tx::json_to_txpb(&content) {
+                    Ok(tx_db) => match tx::store_transaction(&tx_db) {
                         Ok(_) => (),
                         Err(e) => {
                             eprintln!("Error checking password: {:?}", e);

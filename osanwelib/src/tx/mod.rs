@@ -43,6 +43,15 @@ pub fn json_to_tx(json_str: &str) -> Result<TransactionDb, Box<dyn std::error::E
     Ok(tx_db)
 }
 
+
+/// Функція, яка конвертує JSON-рядок у `TransactionDb`.
+pub fn json_to_txpb(json_str: &str) -> Result<TransactionPb, Box<dyn std::error::Error>> {
+    let tx_db: TransactionDb = serde_json::from_str(json_str)?;
+    let tx_pb = from_transaction_db(&tx_db)?;
+    Ok(tx_pb)
+}
+
+
 /// Конвертація TransactionPb у TransactionDb
 pub fn to_transaction_db(tx: &TransactionPb) -> TransactionDb {
     TransactionDb {
@@ -187,6 +196,8 @@ pub fn parse_transaction_pb(
 ///
 
 pub fn store_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
+    verify_transaction(tx)?;
+
     let tx_db = to_transaction_db(tx);
 
     store_transaction_db(&tx_db)?;
@@ -318,7 +329,7 @@ pub fn send_money(
 
     // 3. Парсимо кількість, яку збираємось відправити, у форматі U256 (wei, якщо 18 знаків після коми)
     let amount_wei: U256 = parse_units(amount_str, 18)?.into();
-    
+
     // 4. Перевіряємо, чи вистачає балансу
     if big_balance < amount_wei {
         // Можна додатково відформатувати баланс у звичних одиницях (наприклад, ETH).
@@ -402,6 +413,44 @@ pub fn tx_to_bytes(tx: &TransactionPb) -> Vec<u8> {
         return Vec::new();
     }
     buffer
+}
+
+/// Перевіряє цілісність транзакції:
+/// 1. Хеш `transaction_hash` має збігатись із `keccak256(tx_to_bytes(tx))`.
+/// 2. Якщо тип транзакції = 2 (наприклад, надсилання коштів),
+///    підпис (`sender_signature`) має бути валідною і належати `sender_address`.
+pub fn verify_transaction(tx: &TransactionPb) -> Result<(), Box<dyn Error>> {
+    // 1. Формуємо байтове подання транзакції (без підпису).
+    let data = tx_to_bytes(tx);
+
+    // 2. Перевіряємо, що хеш збігається з `transaction_hash`.
+    let computed_hash = keccak256(&data);
+    if computed_hash[..] != tx.transaction_hash[..] {
+        return Err("Invalid transaction hash: does not match keccak256(tx_to_bytes)".into());
+    }
+
+    // 3. Для транзакцій, які вимагають підпису (наприклад, type=2), перевіряємо підпис:
+    if tx.transaction_type == 2 {
+        // a) Переконуємось, що поле підпису не порожнє
+        if tx.sender_signature.is_empty() {
+            return Err("Missing sender signature for transaction type 2".into());
+        }
+
+        // b) Відновлюємо адресу підписанта (recover) за допомогою наявного коду в keys (псевдо-приклад)
+        // Припустімо, що у вас є `keys::recover_signer_sync(data, signature) -> Result<Vec<u8>, Box<dyn Error>>`
+        // яка повертає адресу (20 байтів).
+        let recovered_address = keys::recover_signer_sync(&data, &tx.sender_signature)?;
+
+        // c) Звіряємо з адресою відправника.
+        if recovered_address != tx.sender_address {
+            return Err(
+                "Signature mismatch: recovered address does not match sender_address".into(),
+            );
+        }
+    }
+
+    // Якщо всі перевірки пройшли успішно – повертаємо Ok
+    Ok(())
 }
 
 #[cfg(test)]

@@ -2,10 +2,9 @@ use crate::db;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::*;
 use ethers::utils::keccak256;
-use hex::{encode,decode};
+use hex::{decode, encode};
 use rand::thread_rng;
 use std::error::Error;
-
 
 pub const PRIV_KEY: &str = "priv_key";
 pub const WALLET: &str = "wallet";
@@ -52,7 +51,6 @@ pub fn get_wallet_address(external_key: &[u8]) -> Result<String, Box<dyn Error>>
     db::get_property_by_key(WALLET, external_key)
 }
 
-
 pub fn sign_byte_array_sync(data: Vec<u8>, external_key: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     // Отримуємо збережений приватний ключ з бази даних
     let priv_key_hex = db::get_property_by_key(PRIV_KEY, external_key)?;
@@ -77,28 +75,42 @@ pub fn sign_byte_array_sync(data: Vec<u8>, external_key: &[u8]) -> Result<Vec<u8
     Ok(signature.to_vec())
 }
 
+/// Відновлює (recover) адресу підписанта з байтів повідомлення (`data`) і байтів підпису (`signature`).
+pub fn recover_signer_sync(data: &[u8], signature: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    // 1. Хешуємо вхідні дані (EVM-стиль, Keccak-256)
+    let digest = keccak256(data);
+    let hash = H256::from_slice(&digest);
+
+    // 2. Конвертуємо 65-байтовий підпис (r, s, v) у тип `ethers::types::Signature`
+    let signature = Signature::try_from(signature)
+        .map_err(|_| "Invalid signature length or format. Expected 65 bytes (r,s,v)".to_string())?;
+
+    // 3. Відновлюємо адресу, яка підписала хеш
+    let recovered_address = signature.recover(hash)?;
+
+    // 4. Повертаємо 20 байтів адреси у `Vec<u8>` (для порівняння з sender_address)
+    Ok(recovered_address.as_bytes().to_vec())
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use ethers::utils::keccak256;
 
-
     #[test]
     fn test_sign_byte_array() {
         let external_key = b"test_key";
         let data = b"Hello, Osanwe!".to_vec();
-    
+
         // Generate keys and store in the DB for testing
         let (signing_key, _address) = generate_ethereum_keypair();
         let priv_key_hex = hex::encode(signing_key.to_bytes());
         db::insert_property(PRIV_KEY, &priv_key_hex, external_key).unwrap();
-        
+
         // Await the signature future
         let signature = sign_byte_array_sync(data.clone(), external_key).unwrap();
         assert!(!signature.is_empty(), "Підпис не повинен бути порожнім");
     }
-    
 
     #[test]
     fn test_generate_ethereum_keypair() {
