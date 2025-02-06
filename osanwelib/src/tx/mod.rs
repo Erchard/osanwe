@@ -1,8 +1,9 @@
 use crate::generated::TransactionPb;
 use crate::{db, keys};
-use ethers::types::U256;
-use ethers::utils::keccak256;
-use ethers::utils::{hex as ethers_hex, parse_units as ethers_parse_units};
+use ethers::{
+    types::U256,
+    utils::{format_units, hex as ethers_hex, keccak256, parse_units},
+};
 use hex::decode;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -257,7 +258,7 @@ pub fn convert_amount_to_bytes(amount_str: &str) -> Result<[u8; 32], Box<dyn Err
     let decimals = 18; // Кількість десяткових знаків для ETH. Змінюйте за потреби.
 
     // Перетворення рядка у U256 (wei) використовуючи ethers::utils::parse_units
-    let amount_wei: U256 = ethers_parse_units(amount_str, decimals)
+    let amount_wei: U256 = parse_units(amount_str, decimals)
         .map_err(|e| Box::<dyn Error>::from(e))?
         .into(); // Explicitly convert the error
 
@@ -307,38 +308,62 @@ pub fn send_money(
     currency_id: u32,
     recipient: &str,
 ) -> Result<TransactionPb, Box<dyn Error>> {
-    let amount_bytes = convert_amount_to_bytes(amount_str)?;
+    // 1. Отримуємо адресу відправника зі сховища ключів
     let sender_address_str = keys::get_wallet_address(external_key.as_bytes())?;
     let sender_address = decode(&sender_address_str[2..])?;
+
+    // 2. Зчитуємо поточний баланс гаманця (32 байти в Big-Endian)
+    let balance_bytes = db::get_wallet_balance(&sender_address_str)?;
+    let big_balance = U256::from_big_endian(&balance_bytes);
+
+    // 3. Парсимо кількість, яку збираємось відправити, у форматі U256 (wei, якщо 18 знаків після коми)
+    let amount_wei: U256 = parse_units(amount_str, 18)?.into();
+    
+    // 4. Перевіряємо, чи вистачає балансу
+    if big_balance < amount_wei {
+        // Можна додатково відформатувати баланс у звичних одиницях (наприклад, ETH).
+        let balance_formatted = format_units(big_balance, 18)?;
+        return Err(format!(
+            "Insufficient funds. Your wallet has {} (wei), which is less than the requested amount {}",
+            balance_formatted,
+            amount_str
+        )
+        .into());
+    }
+
+    // 5. Якщо коштів достатньо, конвертуємо amount_str у 32-байтове представлення:
+    let amount_bytes = convert_amount_to_bytes(amount_str)?;
+
     let recipient_bytes = decode(&recipient[2..])?;
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
+
+    // Приклад: отримати наступний відправний індекс (UTXO-подібний лічильник) з БД
     let sender_output_index = db::get_next_sender_output_index(&sender_address_str)?;
 
+    // 6. Формуємо транзакцію
     let mut transaction = TransactionPb {
-        transaction_hash: Vec::new(), // Порожнє
-        transaction_type: 2,          // За замовчуванням
+        transaction_hash: Vec::new(),
+        transaction_type: 2,
         currency_id,
         amount: amount_bytes.to_vec(),
         timestamp,
         sender_address,
         sender_output_index,
         recipient_address: recipient_bytes,
-        sender_signature: Vec::new(),        // Порожнє
-        source_transaction_hash: Vec::new(), // Порожнє
+        sender_signature: Vec::new(),
+        source_transaction_hash: Vec::new(),
     };
 
+    // 7. Рахуємо хеш транзакції (без підпису, тому що підпис йде поверх)
     let data = tx_to_bytes(&transaction);
-    println!("data={:?}", data);
-
     let transaction_hash = keccak256(&data);
-
     transaction.transaction_hash = transaction_hash.to_vec();
 
+    // 8. Підписуємо байти транзакції
     let sender_signature = keys::sign_byte_array_sync(data, external_key.as_bytes())?;
-
     transaction.sender_signature = sender_signature;
-    println!("{:?}", sender_address_str);
-    println!("{:?}", transaction);
+
+    // Повертаємо готову транзакцію
     Ok(transaction)
 }
 
