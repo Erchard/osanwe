@@ -1,19 +1,8 @@
-// use std::fs;
-// use std::path::PathBuf;
-
 fn main() {
-//    let out_dir = PathBuf::from("src/generated");
-//    fs::create_dir_all(&out_dir).unwrap();
-
-//    println!("cargo:warning=Compiling Protobuf files...");
-
-    prost_build::Config::new()
-//        .out_dir(&out_dir)
+    tonic_build::configure()
         .compile_protos(
-            &["proto/transaction_pb.proto"],
-            &["proto/"],
+            &["proto/transaction_pb.proto"], // Шлях до .proto файлу
+            &["proto/"], // Директорія з .proto файлами
         )
         .expect("Failed to compile Protobuf files");
-
-//    println!("cargo:warning=Generated Protobuf files in: {:?}", out_dir);
 }

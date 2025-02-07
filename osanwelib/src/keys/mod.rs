@@ -51,28 +51,16 @@ pub fn get_wallet_address(external_key: &[u8]) -> Result<String, Box<dyn Error>>
     db::get_property_by_key(WALLET, external_key)
 }
 
-pub fn sign_byte_array_sync(data: Vec<u8>, external_key: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
-    // Отримуємо збережений приватний ключ з бази даних
+pub fn sign_byte_array_sync(
+    data: Vec<u8>,
+    external_key: &[u8],
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Отримуємо зашифрований приватний ключ з БД
     let priv_key_hex = db::get_property_by_key(PRIV_KEY, external_key)?;
     let priv_key_bytes = decode(priv_key_hex)?;
 
-    // Перетворюємо Vec<u8> у [u8; 32]
-    let priv_key_array: [u8; 32] = priv_key_bytes
-        .try_into()
-        .map_err(|_| "Invalid private key length")?;
-
-    // Створюємо гаманець із приватного ключа
-    let wallet = LocalWallet::from(SigningKey::from_bytes((&priv_key_array).into())?);
-
-    // Хешуємо дані за допомогою Keccak-256 (Ethereum-стандарт)
-    let digest = keccak256(&data);
-    let hash = H256::from_slice(&digest);
-
-    // Синхронно підписуємо хешовані дані
-    let signature = wallet.sign_hash(hash)?;
-
-    // Повертаємо підпис у вигляді байтового масиву
-    Ok(signature.to_vec())
+    // Викликаємо чисту функцію підпису, яка не залежить від БД
+    sign_message_with_private_key(&priv_key_bytes, &data)
 }
 
 /// Відновлює (recover) адресу підписанта з байтів повідомлення (`data`) і байтів підпису (`signature`).
@@ -92,25 +80,32 @@ pub fn recover_signer_sync(data: &[u8], signature: &[u8]) -> Result<Vec<u8>, Box
     Ok(recovered_address.as_bytes().to_vec())
 }
 
+pub fn sign_message_with_private_key(
+    private_key_bytes: &[u8],
+    data: &[u8],
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Перетворюємо байти у масив [u8; 32]
+    let priv_key_array: [u8; 32] = private_key_bytes
+        .try_into()
+        .map_err(|_| "Invalid private key length")?;
+
+    // Створюємо гаманець із приватного ключа
+    let wallet = LocalWallet::from(SigningKey::from_bytes((&priv_key_array).into())?);
+
+    // Хешуємо дані за допомогою Keccak-256 (Ethereum-стандарт)
+    let digest = keccak256(data);
+    let hash = H256::from_slice(&digest);
+
+    // Підписуємо хешовані дані
+    let signature = wallet.sign_hash(hash)?;
+
+    Ok(signature.to_vec())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ethers::utils::keccak256;
-
-    #[test]
-    fn test_sign_byte_array() {
-        let external_key = b"test_key";
-        let data = b"Hello, Osanwe!".to_vec();
-
-        // Generate keys and store in the DB for testing
-        let (signing_key, _address) = generate_ethereum_keypair();
-        let priv_key_hex = hex::encode(signing_key.to_bytes());
-        db::insert_property(PRIV_KEY, &priv_key_hex, external_key).unwrap();
-
-        // Await the signature future
-        let signature = sign_byte_array_sync(data.clone(), external_key).unwrap();
-        assert!(!signature.is_empty(), "Підпис не повинен бути порожнім");
-    }
 
     #[test]
     fn test_generate_ethereum_keypair() {
@@ -138,5 +133,23 @@ mod tests {
 
         // Перевіряємо, що отримана адреса відповідає очікуваній
         assert_eq!(address, derived_address, "Згенерована адреса некоректна");
+    }
+
+    #[test]
+    fn test_sign_message_with_private_key() {
+        // Генеруємо пару ключів
+        let (signing_key, address) = generate_ethereum_keypair();
+        let priv_key_bytes = signing_key.to_bytes();
+
+        // Текст для підпису
+        let data = b"Test message".to_vec();
+        let signature = sign_message_with_private_key(&priv_key_bytes, &data).unwrap();
+
+        // Відновлюємо адресу з підпису і перевіряємо, що вона співпадає з оригінальною
+        let digest = keccak256(&data);
+        let hash = H256::from_slice(&digest);
+        let signature_obj = Signature::try_from(signature.as_slice()).unwrap();
+        let recovered_address = signature_obj.recover(hash).unwrap();
+        assert_eq!(address, recovered_address, "Recovered address should match");
     }
 }

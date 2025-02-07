@@ -13,3 +13,11 @@ message TransactionPB {
   bytes sender_signature = 10; // 65 байтів: Підпис відправника
   bytes source_transaction_hash = 11; // 32 байти: Хеш транзакції поповнення в блокчейні
 }
+
+message TransactionResponse {
+  string status = 1;
+}
+
+service TransactionService {
+  rpc SubmitTransaction (TransactionPB) returns (TransactionResponse);
+}
