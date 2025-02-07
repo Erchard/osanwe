@@ -1,5 +1,5 @@
 use crate::generated::TransactionPb;
-use crate::{db, keys};
+use crate::{db, grpc_client, keys};
 use ethers::{
     types::U256,
     utils::{format_units, hex as ethers_hex, keccak256, parse_units},
@@ -43,14 +43,12 @@ pub fn json_to_tx(json_str: &str) -> Result<TransactionDb, Box<dyn std::error::E
     Ok(tx_db)
 }
 
-
 /// Функція, яка конвертує JSON-рядок у `TransactionDb`.
 pub fn json_to_txpb(json_str: &str) -> Result<TransactionPb, Box<dyn std::error::Error>> {
     let tx_db: TransactionDb = serde_json::from_str(json_str)?;
     let tx_pb = from_transaction_db(&tx_db)?;
     Ok(tx_pb)
 }
-
 
 /// Конвертація TransactionPb у TransactionDb
 pub fn to_transaction_db(tx: &TransactionPb) -> TransactionDb {
@@ -208,10 +206,27 @@ pub fn store_transaction_db(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>>
     // Перевіряємо, чи транзакція вже існує
     if db::get_transaction_by_hash(&tx_db.transaction_hash).is_ok() {
         println!("Transaction already exists. Skipping insertion.");
-        return Ok(()); // Якщо є, просто ігноруємо
+        return Ok(()); // Якщо запис вже є, ігноруємо подальші дії
     }
 
-    db::save_transaction(&tx_db)?; // Вставка тільки якщо запису немає
+    // Зберігаємо транзакцію в базі даних
+    db::save_transaction(&tx_db)?;
+
+    // Конвертуємо TransactionDb у TransactionPb (для відправки)
+    let transaction_pb = from_transaction_db(&tx_db)?;
+
+    // Виводимо повідомлення перед відправкою
+    println!("Sending transaction to server, please wait...");
+
+    // Створюємо власний runtime для синхронного виконання асинхронного коду
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async {
+        match grpc_client::send_transaction_to_server(transaction_pb).await {
+            Ok(_) => println!("Transaction sent successfully."),
+            Err(e) => eprintln!("Error sending transaction to server: {:?}", e),
+        }
+    });
+
     Ok(())
 }
 
