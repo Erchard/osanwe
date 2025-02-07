@@ -3,14 +3,14 @@ use crate::tx::TransactionDb;
 use aes::Aes256;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
+use ethers::types::U256;
 use hex::{decode, encode};
 use rand::Rng; // Для генерації випадкового IV
-use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
+use rusqlite::{params, Connection, Result as SqlResult};
 use sha3::{Digest, Keccak256};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use ethers::types::U256;
 
 // AES-256 CBC
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
@@ -160,11 +160,16 @@ pub fn get_property_by_key(key: &str, external_key: &[u8]) -> Result<String, Box
     Ok(decrypted_value)
 }
 
-pub fn is_password_set() -> SqlResult<bool> {
-    let conn = Connection::open(DB_PATH)?;
-    let mut stmt = conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")?;
-    let count: i64 = stmt.query_row([OSANWE_KEY], |row| row.get(0))?;
-    Ok(count > 0)
+pub fn is_password_set() -> bool {
+    if let Ok(conn) = Connection::open(DB_PATH) {
+        if let Ok(mut stmt) =
+            conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")
+        {
+            let count: Result<i64, _> = stmt.query_row([OSANWE_KEY], |row| row.get(0));
+            return count.map_or(false, |c| c > 0);
+        }
+    }
+    false
 }
 
 pub fn is_password_correct(external_key: &[u8]) -> SqlResult<bool> {
@@ -338,22 +343,18 @@ pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, 
     Ok(tx_db)
 }
 
-/// Повертає наступний sender_output_index для заданого sender_address.
-/// Якщо записів немає, повертається 0.
+
 pub fn get_next_sender_output_index(sender_address: &str) -> Result<u32, Box<dyn Error>> {
     let conn = Connection::open(DB_PATH)?;
 
-    // Виконуємо запит для отримання максимального значення sender_output_index для даної адреси.
-    let max_index: Option<i64> = conn
-        .query_row(
-            "SELECT MAX(sender_output_index) FROM transactions WHERE sender_address = ?1",
-            params![sender_address],
-            |row| row.get(0),
-        )
-        .optional()?; // Використовуємо optional, оскільки результат може бути NULL
-
-    // Якщо записів немає, повертаємо 0, інакше збільшуємо знайдене значення на 1.
-    let next_index = max_index.map(|v| v + 1).unwrap_or(1);
+    let max_index: Option<i64> = conn.query_row(
+        "SELECT MAX(sender_output_index) FROM transactions WHERE sender_address = ?1",
+        params![sender_address],
+        |row| row.get::<_, Option<i64>>(0),  // explicitly retrieve Option<i64>
+    )?;
+    
+    // If there are no records, treat the max index as 0, then add 1.
+    let next_index = max_index.unwrap_or(0) + 1;
 
     Ok(next_index as u32)
 }
@@ -398,7 +399,6 @@ pub fn get_wallet_balance(wallet_address: &str) -> Result<Vec<u8>, Box<dyn std::
     total.to_big_endian(&mut buf);
     Ok(buf.to_vec())
 }
-
 
 #[cfg(test)]
 mod tests {

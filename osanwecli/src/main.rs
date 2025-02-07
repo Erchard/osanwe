@@ -30,6 +30,13 @@ pub fn get_matches() -> clap::ArgMatches {
                 .value_parser(clap::value_parser!(String)),
         )
         .arg(
+            Arg::new("set-password")
+                .long("set-password")
+                .value_name("PASSWORD")
+                .help("Set the wallet password if it hasn't been set yet")
+                .value_parser(clap::value_parser!(String)),
+        )
+        .arg(
             Arg::new("list-assets")
                 .short('l')
                 .long("list-assets")
@@ -80,21 +87,27 @@ fn main() {
         eprintln!("Error checking or creating database: {:?}", e);
     }
 
-    match db::is_password_set() {
-        Ok(is_set) => {
-            if !is_set {
-                println!("Password is not set. Please set a new password:");
-                if let Some(password) = prompt_for_password() {
-                    if let Err(e) = db::set_password(password.as_bytes()) {
-                        eprintln!("Error saving password: {:?}", e);
-                    } else {
-                        println!("Password has been successfully set.");
-                    }
-                }
+    if let Some(new_password) = matches.get_one::<String>("set-password") {
+        if !db::is_password_set() {
+            if let Err(e) = db::set_password(new_password.as_bytes()) {
+                eprintln!("Error saving password: {:?}", e);
+            } else {
+                println!("Password has been successfully set.");
             }
+        } else {
+            println!("Password is already set. Cannot change it.");
         }
-        Err(e) => {
-            eprintln!("Error checking the password: {:?}", e);
+    }
+
+    // Використовуємо нову функцію is_password_set, яка повертає bool
+    if !db::is_password_set() {
+        println!("Password is not set. Please set a new password:");
+        if let Some(password) = prompt_for_password() {
+            if let Err(e) = db::set_password(password.as_bytes()) {
+                eprintln!("Error saving password: {:?}", e);
+            } else {
+                println!("Password has been successfully set.");
+            }
         }
     }
 

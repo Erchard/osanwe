@@ -3,6 +3,10 @@ name = "osanwesrv"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "osanwesrv"
+path = "src/main.rs"
+
 [dependencies]
 osanwelib = { path = "../osanwelib" }
 actix-web = "4"

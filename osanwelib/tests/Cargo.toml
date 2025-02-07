@@ -1,0 +1,10 @@
+[package]
+name = "integration_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+osanwelib = { path = "../../osanwelib" }
+osanwecli = { path = "../../osanwecli" }
+osanwesrv = { path = "../../osanwesrv" }
+
