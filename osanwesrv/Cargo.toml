@@ -16,6 +16,8 @@ prost-types = "0.13.4"
 tonic = "0.12.1"
 async-trait = "0.1.73"
 tokio-postgres = "0.7"
+config = "0.13"
+serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.13.4"
