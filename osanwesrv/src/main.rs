@@ -3,6 +3,7 @@ use osanwelib::generated::{
     transaction_service_server::{TransactionService, TransactionServiceServer},
     TransactionPb, TransactionResponse,
 };
+use tokio::{signal, sync::oneshot};
 use tokio_postgres::{Error, NoTls};
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -48,7 +49,7 @@ async fn init_db() -> Result<(), Error> {
         INSERT INTO transactions (details) VALUES
             ('Transaction 1'),
             ('Transaction 2');
-    ",
+    "
         )
         .await?;
 
@@ -63,12 +64,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let transaction_service = MyTransactionService::default();
 
-    println!("Osanwe gRPC Server running on {}", addr);
-
-    Server::builder()
+    let (shutdown_tx, _shutdown_rx) = oneshot::channel::<()>();
+    let server = Server::builder()
         .add_service(TransactionServiceServer::new(transaction_service))
-        .serve(addr)
-        .await?;
+        .serve_with_shutdown(addr, async {
+            signal::ctrl_c().await.expect("Failed to listen for shutdown signal");
+            println!("Received shutdown signal");
+            let _ = shutdown_tx.send(());
+        });
+
+    println!("Osanwe gRPC Server running on {}. Press Ctrl+C to stop.", addr);
+    server.await?;
 
     Ok(())
 }
