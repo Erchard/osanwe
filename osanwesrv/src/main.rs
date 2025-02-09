@@ -6,7 +6,6 @@ use osanwelib::generated::{
     TransactionPb, TransactionResponse,
 };
 use tokio::{signal, sync::oneshot};
-
 use tonic::{transport::Server, Request, Response, Status};
 
 #[derive(Debug, Default)]
@@ -18,18 +17,29 @@ impl TransactionService for MyTransactionService {
         &self,
         request: Request<TransactionPb>,
     ) -> Result<Response<TransactionResponse>, Status> {
+        // Отримання транзакції з запиту
         let transaction = request.into_inner();
         println!("Received transaction: {:?}", transaction);
 
-        let response = TransactionResponse {
-            status: "Transaction received".to_string(),
-        };
-        Ok(Response::new(response))
+        // Спроба збереження транзакції в базі даних
+        match pgdb::save_transaction(transaction).await {
+            Ok(()) => {
+                let response = TransactionResponse {
+                    status: "Transaction received and saved".to_string(),
+                };
+                Ok(Response::new(response))
+            }
+            Err(e) => {
+                eprintln!("Failed to save transaction: {:?}", e);
+                Err(Status::internal("Failed to save transaction"))
+            }
+        }
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Ініціалізація бази даних (створення таблиць, індексів тощо)
     pgdb::init_db().await?;
 
     let addr = "[::1]:50051".parse()?;
