@@ -1,4 +1,5 @@
 use config::Config;
+use std::env;
 use tokio_postgres::{Error, NoTls};
 
 #[derive(serde::Deserialize)]
@@ -11,6 +12,8 @@ struct DatabaseSettings {
 }
 
 pub async fn init_db() -> Result<(), Error> {
+    print_current_directory();
+
     // Завантаження конфігурації з файлу config.toml та змінного оточення
     let settings = Config::builder()
         .add_source(config::File::with_name("config"))
@@ -25,30 +28,36 @@ pub async fn init_db() -> Result<(), Error> {
     // Формування рядка підключення із завантажених налаштувань
     let connection_str = format!(
         "host={} port={} user={} password={} dbname={}",
-        db_settings.host, db_settings.port, db_settings.user, db_settings.password, db_settings.dbname
+        db_settings.host,
+        db_settings.port,
+        db_settings.user,
+        db_settings.password,
+        db_settings.dbname
     );
 
     let (client, connection) = tokio_postgres::connect(&connection_str, NoTls).await?;
 
+    // Запуск окремої задачі для підтримки з'єднання
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             eprintln!("Connection error: {}", e);
         }
     });
 
-    client.batch_execute(
-        "
-        CREATE TABLE IF NOT EXISTS transactions (
-            id SERIAL PRIMARY KEY,
-            details TEXT NOT NULL
-        );
-        INSERT INTO transactions (details) VALUES
-            ('Transaction 1'),
-            ('Transaction 2');
-        ",
-    )
-    .await?;
+    // Вбудовуємо SQL-скрипт на етапі компіляції.
+    // Шлях вказується відносно розташування цього файлу (pgdb.rs)
+    const SQL_SCRIPT: &str = include_str!("../sql/init_db.sql");
+
+    // Виконання SQL-скрипту
+    client.batch_execute(SQL_SCRIPT).await?;
 
     println!("Database initialized successfully");
     Ok(())
+}
+
+fn print_current_directory() {
+    match env::current_dir() {
+        Ok(path) => println!("Поточна робоча директорія: {}", path.display()),
+        Err(e) => eprintln!("Не вдалося отримати поточну директорію: {}", e),
+    }
 }
