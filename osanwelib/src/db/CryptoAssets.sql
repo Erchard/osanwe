@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS "CryptoAssets" (
 );
 
 -- Додаємо записи (прикладна вибірка з EVM main/testnet і non-EVM)
-INSERT INTO "CryptoAssets" (id, net_type, chain_code, token_id, symbol, description) VALUES
+INSERT OR IGNORE INTO "CryptoAssets" (id, net_type, chain_code, token_id, symbol, description) VALUES
 
 -- 1) EVM MAINNET (net_type = 1)
 -- 1.1 Ethereum mainnet (chain_code = 1)

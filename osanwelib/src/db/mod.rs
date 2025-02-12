@@ -28,6 +28,19 @@ pub struct CryptoAsset {
     pub description: Option<String>,
 }
 
+fn get_db_connection() -> SqlResult<Connection> {
+    #[cfg(test)]
+    {
+        let db_uri = std::env::var("TEST_DB_URI")
+            .unwrap_or_else(|_| "file::memory:?cache=shared".to_string());
+        Connection::open(&db_uri)
+    }
+    #[cfg(not(test))]
+    {
+        Connection::open(DB_PATH)
+    }
+}
+
 fn create_cipher(external_key: &[u8], iv: Option<&[u8]>) -> (Aes256Cbc, Vec<u8>) {
     let mut hasher = Keccak256::new();
     hasher.update(external_key);
@@ -76,15 +89,26 @@ fn decrypt(data: &str, external_key: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
 }
 
 pub fn check_and_create_database() -> Result<(), Box<dyn std::error::Error>> {
-    if fs::metadata(DB_PATH).is_ok() {
-        println!("Database found, all is well.");
-    } else {
-        let conn = Connection::open(DB_PATH)?;
-        create_database(&conn)?;
-        println!("Database created successfully.");
+    // У продакшені: якщо файл існує – нічого не робимо, інакше створюємо базу
+    #[cfg(not(test))]
+    {
+        if fs::metadata(DB_PATH).is_ok() {
+            println!("Database found, all is well.");
+        } else {
+            let conn = get_db_connection()?;
+            create_database(&conn)?;
+            println!("Database created successfully.");
+        }
+        create_cryptoassets_table_if_needed()?;
     }
 
-    create_cryptoassets_table_if_needed()?; // виконає CREATE TABLE / INSERT з файлу, якщо треба
+    // У тестовому режимі: завжди створюємо in-memory базу з потрібною схемою
+    #[cfg(test)]
+    {
+        let conn = get_db_connection()?;
+        create_database(&conn)?;
+        create_cryptoassets_table_if_needed()?;
+    }
 
     Ok(())
 }
@@ -101,7 +125,7 @@ pub fn create_database(conn: &Connection) -> rusqlite::Result<()> {
 }
 
 pub fn get_all_cryptoassets() -> Result<Vec<CryptoAsset>, Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     let mut stmt = conn.prepare(
         r#"
@@ -137,7 +161,7 @@ pub fn get_all_cryptoassets() -> Result<Vec<CryptoAsset>, Box<dyn Error>> {
 }
 
 pub fn insert_property(key: &str, value: &str, external_key: &[u8]) -> Result<(), Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     let encrypted_value = encrypt(value.as_bytes(), external_key)?; // Розпакування `Result`
 
@@ -150,7 +174,7 @@ pub fn insert_property(key: &str, value: &str, external_key: &[u8]) -> Result<()
 }
 
 pub fn get_property_by_key(key: &str, external_key: &[u8]) -> Result<String, Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
     let mut stmt = conn.prepare("SELECT property_value FROM properties WHERE property_key = ?1")?;
     let encrypted_value: String = stmt.query_row([key], |row| row.get(0))?;
 
@@ -161,7 +185,7 @@ pub fn get_property_by_key(key: &str, external_key: &[u8]) -> Result<String, Box
 }
 
 pub fn is_password_set() -> bool {
-    if let Ok(conn) = Connection::open(DB_PATH) {
+    if let Ok(conn) = get_db_connection() {
         if let Ok(mut stmt) =
             conn.prepare("SELECT COUNT(*) FROM properties WHERE property_key = ?1")
         {
@@ -183,7 +207,7 @@ pub fn is_password_correct(external_key: &[u8]) -> SqlResult<bool> {
 }
 
 pub fn set_password(external_key: &[u8]) -> Result<(), Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
     create_database(&conn)?;
     match insert_property(OSANWE_KEY, TEST_PHRASE, external_key) {
         Ok(_) => println!("Password has been successfully set."),
@@ -200,7 +224,7 @@ pub fn set_password(external_key: &[u8]) -> Result<(), Box<dyn Error>> {
 /// Перевіряє, чи існує таблиця CryptoAssets. Якщо ні - зчитує файл SQL та виконує його.
 /// Вважаємо, що у файлі CryptoAssets.sql є CREATE TABLE та INSERT-и.
 pub fn create_cryptoassets_table_if_needed() -> Result<(), Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
     let count: i64 = conn.query_row(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CryptoAssets';",
         [],
@@ -233,7 +257,7 @@ pub fn create_cryptoassets_table_if_needed() -> Result<(), Box<dyn Error>> {
 /// Ensures that the 'transactions' table exists in the database.
 /// If it does not exist, it creates the table by executing the SQL in 'transactions.sql'.
 fn ensure_transactions_table_exists() -> Result<(), Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     // Check if the 'transactions' table exists
     let count: i64 = conn.query_row(
@@ -272,7 +296,7 @@ fn ensure_transactions_table_exists() -> Result<(), Box<dyn Error>> {
 pub fn save_transaction(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
     ensure_transactions_table_exists()?;
 
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     let mut stmt = conn.prepare(
         "INSERT INTO transactions (
@@ -307,7 +331,7 @@ pub fn save_transaction(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     let mut stmt = conn.prepare(
         "SELECT 
@@ -343,25 +367,23 @@ pub fn get_transaction_by_hash(transaction_hash: &str) -> Result<TransactionDb, 
     Ok(tx_db)
 }
 
-
 pub fn get_next_sender_output_index(sender_address: &str) -> Result<u32, Box<dyn Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     let max_index: Option<i64> = conn.query_row(
         "SELECT MAX(sender_output_index) FROM transactions WHERE sender_address = ?1",
         params![sender_address],
-        |row| row.get::<_, Option<i64>>(0),  // explicitly retrieve Option<i64>
+        |row| row.get::<_, Option<i64>>(0), // explicitly retrieve Option<i64>
     )?;
-    
+
     // If there are no records, treat the max index as 0, then add 1.
     let next_index = max_index.unwrap_or(0) + 1;
 
     Ok(next_index as u32)
 }
 
-
 pub fn get_wallet_balance(wallet_address: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let conn = Connection::open(DB_PATH)?;
+    let conn = get_db_connection()?;
 
     // 1) Всі вхідні amount
     let mut stmt = conn.prepare("SELECT amount FROM transactions WHERE recipient_address = ?1")?;
@@ -406,12 +428,7 @@ mod tests {
     use crate::generated::TransactionPb;
     use crate::tx::from_transaction_db;
     use crate::tx::to_transaction_db;
-    use std::fs;
-
-    /// Допоміжна функція для чистого старту в кожному тесті
-    fn remove_db() {
-        let _ = fs::remove_file(DB_PATH);
-    }
+    use uuid::Uuid;
 
     #[test]
     fn test_conversion_to_transaction_db() {
@@ -510,7 +527,14 @@ mod tests {
 
     #[test]
     fn test_save_and_fetch_transaction_with_missing_fields() {
-        remove_db();
+        // Генеруємо унікальний URI для in‑memory бази:
+        let unique_db_uri = format!("file:{}?mode=memory&cache=shared", Uuid::new_v4());
+        std::env::set_var("TEST_DB_URI", unique_db_uri);
+
+        // Відкриваємо постійне з’єднання і зберігаємо його в змінній, щоб база існувала протягом усього тесту
+        let _persistent_conn = Connection::open(&std::env::var("TEST_DB_URI").unwrap())
+            .expect("Failed to open persistent connection");
+
         check_and_create_database().unwrap();
 
         let tx_db = TransactionDb {
@@ -549,9 +573,13 @@ mod tests {
 
     #[test]
     fn test_get_all_cryptoassets() {
-        // Видаляємо, щоб почати з чистої бази
-        remove_db();
+        // Генеруємо унікальний URI для in‑memory бази:
+        let unique_db_uri = format!("file:{}?mode=memory&cache=shared", Uuid::new_v4());
+        std::env::set_var("TEST_DB_URI", unique_db_uri);
 
+        // Відкриваємо постійне з’єднання і зберігаємо його в змінній, щоб база існувала протягом усього тесту
+        let _persistent_conn = Connection::open(&std::env::var("TEST_DB_URI").unwrap())
+            .expect("Failed to open persistent connection");
         // Створюємо базу і таблицю
         check_and_create_database().unwrap();
 
