@@ -93,11 +93,11 @@ pub fn check_and_create_database() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(test))]
     {
         if fs::metadata(DB_PATH).is_ok() {
-            println!("Database found, all is well.");
+            log::info!("Database found, all is well.");
         } else {
             let conn = get_db_connection()?;
             create_database(&conn)?;
-            println!("Database created successfully.");
+            log::info!("Database created successfully.");
         }
         create_cryptoassets_table_if_needed()?;
     }
@@ -200,7 +200,7 @@ pub fn is_password_correct(external_key: &[u8]) -> SqlResult<bool> {
     match get_property_by_key(OSANWE_KEY, external_key) {
         Ok(test_phrase) => Ok(test_phrase == TEST_PHRASE),
         Err(e) => {
-            eprintln!("Failed to decrypt password: {}", e);
+            log::error!("Failed to decrypt password: {}", e);
             Ok(false) // Якщо не вдалося розшифрувати, пароль неправильний
         }
     }
@@ -210,14 +210,14 @@ pub fn set_password(external_key: &[u8]) -> Result<(), Box<dyn Error>> {
     let conn = get_db_connection()?;
     create_database(&conn)?;
     match insert_property(OSANWE_KEY, TEST_PHRASE, external_key) {
-        Ok(_) => println!("Password has been successfully set."),
+        Ok(_) =>  log::info!("Password has been successfully set."),
         Err(e) => {
-            eprintln!("Error setting password in database: {}", e);
+            log::error!("Error setting password in database: {}", e);
             return Err(e);
         }
     }
     let address = keys::generate_save_keypair(external_key);
-    println!("Generated Ethereum Address: {:?}", address);
+    log::info!("Generated Ethereum Address: {:?}", address);
     Ok(())
 }
 
@@ -246,9 +246,9 @@ pub fn create_cryptoassets_table_if_needed() -> Result<(), Box<dyn Error>> {
 
         let sql = fs::read_to_string(sql_path)?;
         conn.execute_batch(&sql)?;
-        println!("Table 'CryptoAssets' created and data inserted from CryptoAssets.sql");
+        log::info!("Table 'CryptoAssets' created and data inserted from CryptoAssets.sql");
     } else {
-        println!("Table 'CryptoAssets' already exists. No action needed.");
+        log::info!("Table 'CryptoAssets' already exists. No action needed.");
     }
 
     Ok(())
@@ -285,9 +285,9 @@ fn ensure_transactions_table_exists() -> Result<(), Box<dyn Error>> {
         // Read and execute the SQL statements from 'transactions.sql'
         let sql = fs::read_to_string(sql_path)?;
         conn.execute_batch(&sql)?;
-        println!("Table 'transactions' created successfully.");
+        log::info!("Table 'transactions' created successfully.");
     } else {
-        println!("Table 'transactions' already exists. No action needed.");
+        log::info!("Table 'transactions' already exists. No action needed.");
     }
 
     Ok(())
@@ -326,7 +326,7 @@ pub fn save_transaction(tx_db: &TransactionDb) -> Result<(), Box<dyn Error>> {
         &tx_db.source_transaction_hash,
     ])?;
 
-    println!("Transaction saved successfully.");
+    log::info!("Transaction saved successfully.");
     Ok(())
 }
 
@@ -429,6 +429,7 @@ mod tests {
     use crate::tx::from_transaction_db;
     use crate::tx::to_transaction_db;
     use uuid::Uuid;
+
 
     #[test]
     fn test_conversion_to_transaction_db() {

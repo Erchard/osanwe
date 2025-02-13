@@ -81,6 +81,9 @@ pub fn get_matches() -> clap::ArgMatches {
 }
 
 fn main() {
+    // Ініціалізація логера тільки в режимі розробки
+    env_logger::init();
+
     let matches = get_matches();
 
     if let Err(e) = db::check_and_create_database() {
